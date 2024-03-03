@@ -509,6 +509,13 @@ def start_prompt(
     help="Pass an entire codebase to the model as context, at the specified location"
 )
 @click.option(
+    "-e", 
+    "--file-extensions", 
+    "file_extensions",
+    multiple=True, 
+    help="File name extensions of files to look at in the codebase"
+)
+@click.option(
     "-c",
     "--context",
     "context",
@@ -538,7 +545,8 @@ def start_prompt(
     "-j", "--json", "json_mode", is_flag=True, help="Activate json response mode"
 )
 def main(
-    source, context, api_key, model, multiline, restore, non_interactive, json_mode
+    source, context, api_key, model, multiline, restore, non_interactive, json_mode,
+    file_extensions
 ) -> None:
     # If non interactive suppress the logging messages
     if non_interactive:
@@ -625,7 +633,16 @@ def main(
         logger.info(
             "The entire codebase will be prepended to your first message."
         )
-        extensions = ["ts", "html"]
+
+        extensions = []
+
+        if file_extensions != ():
+            logger.info(
+                f"Looking only at source files with extensions: [green bold]{file_extensions}\n",
+                extra={"highlighter": None},
+            )
+            extensions = file_extensions
+
         codebase = load_codebase(source, extensions)
         messages.append({"role": "system", "content": codebase})
 
