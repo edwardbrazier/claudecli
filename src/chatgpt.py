@@ -619,7 +619,7 @@ def main(
     # Source code location from command line option
     if source:
         logger.info(
-            f"Source code location: [green bold]{source}\n",
+            f"Codebase location: [green bold]{source}\n",
             extra={"highlighter": None},
         )
         logger.info(
@@ -627,10 +627,7 @@ def main(
         )
         extensions = ["ts", "html"]
         codebase = load_codebase(source, extensions)
-        logger.info(
-            f"Codebase loaded:\n {codebase}",
-            extra={"highlighter": None},
-        )
+        messages.append({"role": "system", "content": codebase})
 
     # Context from the command line option
     if context:
