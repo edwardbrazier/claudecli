@@ -506,14 +506,14 @@ def start_prompt(
     "--source",
     "source",
     type=click.Path(exists=True),
-    help="Pass an entire codebase to the model as context, at the specified location"
+    help="Pass an entire codebase to the model as context, from the specified location"
 )
 @click.option(
     "-e", 
     "--file-extensions", 
     "file_extensions",
-    multiple=True, 
-    help="File name extensions of files to look at in the codebase"
+    required=False,
+    help="File name extensions of files to look at in the codebase, separated by commas without spaces, e.g. py,txt,md"
 )
 @click.option(
     "-c",
@@ -641,10 +641,13 @@ def main(
                 f"Looking only at source files with extensions: [green bold]{file_extensions}\n",
                 extra={"highlighter": None},
             )
-            extensions = file_extensions
+            extensions = [ext.strip() for ext in file_extensions.split(",")]
 
-        codebase = load_codebase(source, extensions)
-        messages.append({"role": "system", "content": codebase})
+        try:
+            codebase = load_codebase(source, extensions)
+            messages.append({"role": "system", "content": codebase})
+        except FileNotFoundError as e:
+            print(f"Error reading codebase: {e}")
 
     # Context from the command line option
     if context:
