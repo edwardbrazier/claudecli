@@ -18,7 +18,7 @@ from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.markdown import Markdown
-from typing import Optional
+from typing import Optional, List
 from xdg_base_dirs import xdg_config_home
 
 
@@ -266,6 +266,50 @@ def print_markdown(content: str, code_blocks: Optional[dict] = None):
     elif regular_content:  # If there's any remaining regular content, print it
         console.print(Markdown("\n".join(regular_content)))
 
+###############################################################################
+def load_codebase(base_path: str, extensions: List[str]) -> str:
+    """
+    Concatenates the contents of files in the given directory and its subdirectories
+    that match the specified file extensions.
+
+    Parameters:
+    - base_path (str): The starting directory path to search for files.
+    - extensions (List[str]): A list of file extension strings to include (e.g., ['py', 'txt']).
+
+    Returns:
+    - str: A single string containing the concatenated contents of all matching files,
+           with headers indicating each file's path relative to base_path.
+
+    Raises:
+    - ValueError: If base_path does not exist or is not a directory.
+    - FileNotFoundError: If no matching files are found.
+    """
+
+    # Verify the base path exists and is a directory
+    if not os.path.exists(base_path) or not os.path.isdir(base_path):
+        raise ValueError(f"The path {base_path} does not exist or is not a directory.")
+    
+    concatenated_contents = ""
+    matched_files_found = False
+
+    # Walk through the directory and subdirectories
+    for root, dirs, files in os.walk(base_path):
+        for file_name in files:
+            if any(file_name.endswith(f".{ext}") for ext in extensions):
+                matched_files_found = True
+                file_path = Path(root) / file_name
+                relative_path = file_path.relative_to(base_path)
+                with open(file_path, "r") as file:
+                    contents = file.read()
+                    concatenated_contents += f"### {relative_path} ###\n{contents}\n\n"
+
+    if not matched_files_found:
+        raise FileNotFoundError("No matching files found.")
+
+    return concatenated_contents
+
+
+###############################################################################
 
 def start_prompt(
     session: PromptSession,
@@ -290,6 +334,7 @@ def start_prompt(
         )
 
     if message.lower().strip() == "/q":
+        # this is a bit strange to be raising exceptions for normal conditions
         raise EOFError
     if message.lower() == "":
         raise KeyboardInterrupt
@@ -454,8 +499,15 @@ def start_prompt(
             logger.error(r.json(), extra={"highlighter": None})
             raise EOFError
 
-
+###############################################################################
 @click.command()
+@click.option(
+    "-s",
+    "--source",
+    "source",
+    type=click.Path(exists=True),
+    help="Pass an entire codebase to the model as context, at the specified location"
+)
 @click.option(
     "-c",
     "--context",
@@ -486,7 +538,7 @@ def start_prompt(
     "-j", "--json", "json_mode", is_flag=True, help="Activate json response mode"
 )
 def main(
-    context, api_key, model, multiline, restore, non_interactive, json_mode
+    source, context, api_key, model, multiline, restore, non_interactive, json_mode
 ) -> None:
     # If non interactive suppress the logging messages
     if non_interactive:
@@ -563,6 +615,22 @@ def main(
     # Add the system message for code blocks in case markdown is enabled in the config file
     if config["markdown"]:
         add_markdown_system_message()
+
+    # Source code location from command line option
+    if source:
+        logger.info(
+            f"Source code location: [green bold]{source}\n",
+            extra={"highlighter": None},
+        )
+        logger.info(
+            "The entire codebase will be prepended to your first message."
+        )
+        extensions = ["ts", "html"]
+        codebase = load_codebase(source, extensions)
+        logger.info(
+            f"Codebase loaded:\n {codebase}",
+            extra={"highlighter": None},
+        )
 
     # Context from the command line option
     if context:
