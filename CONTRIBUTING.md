@@ -11,7 +11,7 @@ Regarding the code, the original idea was to have a single, well structured, Pyt
 
 Check out the repository:
 
-`git clone https://github.com/marcolardera/chatgpt-cli.git`
+`git clone https://github.com/sevenquanta/chatgpt-cli.git`
 
 Create and activate a Virtual Environment:
 
