@@ -504,9 +504,10 @@ def start_prompt(
 @click.option(
     "-s",
     "--source",
-    "source",
+    "sources",
     type=click.Path(exists=True),
-    help="Pass an entire codebase to the model as context, from the specified location"
+    help="Pass an entire codebase to the model as context, from the specified location",
+    multiple=True,
 )
 @click.option(
     "-e", 
@@ -545,7 +546,7 @@ def start_prompt(
     "-j", "--json", "json_mode", is_flag=True, help="Activate json response mode"
 )
 def main(
-    source, context, api_key, model, multiline, restore, non_interactive, json_mode,
+    sources, context, api_key, model, multiline, restore, non_interactive, json_mode,
     file_extensions
 ) -> None:
     # If non interactive suppress the logging messages
@@ -625,29 +626,30 @@ def main(
         add_markdown_system_message()
 
     # Source code location from command line option
-    if source:
-        logger.info(
-            f"Codebase location: [green bold]{source}\n",
-            extra={"highlighter": None},
-        )
-        logger.info(
-            "The entire codebase will be prepended to your first message."
-        )
-
-        extensions = []
-
-        if file_extensions != ():
+    if sources:
+        for source in sources:
             logger.info(
-                f"Looking only at source files with extensions: [green bold]{file_extensions}\n",
+                f"Codebase location: [green bold]{source}\n",
                 extra={"highlighter": None},
             )
-            extensions = [ext.strip() for ext in file_extensions.split(",")]
+            logger.info(
+                "The entire codebase will be prepended to your first message."
+            )
 
-        try:
-            codebase = load_codebase(source, extensions)
-            messages.append({"role": "system", "content": codebase})
-        except FileNotFoundError as e:
-            print(f"Error reading codebase: {e}")
+            extensions = []
+
+            if file_extensions != ():
+                logger.info(
+                    f"Looking only at source files with extensions: [green bold]{file_extensions}\n",
+                    extra={"highlighter": None},
+                )
+                extensions = [ext.strip() for ext in file_extensions.split(",")]
+
+            try:
+                codebase = load_codebase(source, extensions)
+                messages.append({"role": "system", "content": codebase})
+            except FileNotFoundError as e:
+                print(f"Error reading codebase: {e}")
 
     # Context from the command line option
     if context:
