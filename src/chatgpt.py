@@ -267,6 +267,14 @@ def print_markdown(content: str, code_blocks: Optional[dict] = None):
         console.print(Markdown("\n".join(regular_content)))
 
 ###############################################################################
+def get_size(contents: str) -> str:
+    """
+    Get the size of the string in KB and format the output as a string.
+    """
+    size = len(contents) / 1024
+    return f"{size:.2f} KB"
+
+###############################################################################
 def load_codebase(base_path: str, extensions: List[str]) -> str:
     """
     Concatenates the contents of files in the given directory and its subdirectories
@@ -292,16 +300,23 @@ def load_codebase(base_path: str, extensions: List[str]) -> str:
     concatenated_contents = ""
     matched_files_found = False
 
+    encodings = ['utf-8', 'cp1252', 'iso-8859-1']
+
     # Walk through the directory and subdirectories
     for root, dirs, files in os.walk(base_path):
         for file_name in files:
-            if any(file_name.endswith(f".{ext}") for ext in extensions):
+            if any(file_name.endswith(f".{ext}") for ext in extensions) or not(any(extensions)):
                 matched_files_found = True
                 file_path = Path(root) / file_name
                 relative_path = file_path.relative_to(base_path)
-                with open(file_path, "r") as file:
-                    contents = file.read()
-                    concatenated_contents += f"### {relative_path} ###\n{contents}\n\n"
+
+                for encoding in encodings:
+                    try:
+                        with open(file_path, 'r', encoding=encoding) as file:
+                            contents = file.read()
+                            concatenated_contents += f"### {relative_path} ###\n{contents}\n\n" 
+                    except Exception as e:
+                        logger.warning(f"Failed to open file {file_path} with encoding {encoding}: {e}")
 
     if not matched_files_found:
         raise FileNotFoundError("No matching files found.")
@@ -506,7 +521,8 @@ def start_prompt(
     "--source",
     "sources",
     type=click.Path(exists=True),
-    help="Pass an entire codebase to the model as context, from the specified location",
+    help="Pass an entire codebase to the model as context, from the specified location. "
+        "Repeat this option and its argument any number of times.",
     multiple=True,
 )
 @click.option(
@@ -514,7 +530,8 @@ def start_prompt(
     "--file-extensions", 
     "file_extensions",
     required=False,
-    help="File name extensions of files to look at in the codebase, separated by commas without spaces, e.g. py,txt,md"
+    help="File name extensions of files to look at in the codebase, separated by commas without spaces, e.g. py,txt,md "
+        "Only use this option once, even for multiple codebases."
 )
 @click.option(
     "-c",
@@ -648,6 +665,11 @@ def main(
             try:
                 codebase = load_codebase(source, extensions)
                 messages.append({"role": "system", "content": codebase})
+                
+                # Show the user how big the entire codebase is, in kb. 
+                logger.info(
+                    f"Codebase size: [green bold]{get_size(codebase)}\n",
+                )
             except FileNotFoundError as e:
                 print(f"Error reading codebase: {e}")
 
