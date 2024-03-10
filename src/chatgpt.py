@@ -11,6 +11,7 @@ import re
 import requests
 import sys
 import yaml
+import anthropic
 
 from pathlib import Path
 from prompt_toolkit import PromptSession, HTML
@@ -33,6 +34,7 @@ OPENAI_BASE_ENDPOINT = os.environ.get(
     "OPENAI_BASE_ENDPOINT", "https://api.openai.com/v1"
 )
 ENV_VAR = "OPENAI_API_KEY"
+ENV_VAR_ANTHROPIC = "ANTHROPIC_API_KEY"
 
 # Azure price is not accurate, it depends on your subscription
 PRICING_RATE = {
@@ -74,8 +76,10 @@ completion_tokens = 0
 console = Console()
 
 DEFAULT_CONFIG = {
-    "supplier": "openai",
-    "api-key": "<INSERT YOUR  OPENAI API KEY HERE>",
+    "supplier": "anthropic",
+    "anthropic-api-key": "<INSERT YOUR  OPENAI API KEY HERE>",
+    "anthropic_api_url": "https://api.anthropic.com",
+    "anthropic_model": "claude-3-opus-20240229",
     "model": "gpt-3.5-turbo",
     "azure_endpoint": "https://xxxx.openai.azure.com/",
     "azure_api_version": "2023-07-01-preview",
@@ -388,6 +392,10 @@ def start_prompt(
         api_key = config["api-key"]
         model = config["model"]
         base_endpoint = OPENAI_BASE_ENDPOINT
+    elif config["supplier"] == "anthropic":
+        api_key = config["anthropic_api_key"]
+        model = config["anthropic_model"]
+        base_endpoint = config["anthropic_api_url"]
     else:
         logger.error("Supplier must be either 'azure' or 'openai'")
 
@@ -422,6 +430,24 @@ def start_prompt(
             }
             r = requests.post(
                 f"{base_endpoint}/chat/completions",
+                headers=headers,
+                json=body,
+                proxies=proxy,
+            )
+        elif config["supplier"] == "anthropic":
+            headers = {
+                "Content-Type": "application/json",
+                "X-API-Key": api_key,
+            }
+            body = {
+                "model": model,
+                "prompt": f"{messages[-2]['content']}\n\nHuman: {messages[-1]['content']}\n\nAssistant:",
+                "max_tokens_to_sample": config.get("max_tokens", 500),
+                "stop_sequences": ["\n\nHuman:"],
+                "temperature": config["temperature"],
+            }
+            r = requests.post(
+                f"{base_endpoint}/v1/complete",
                 headers=headers,
                 json=body,
                 proxies=proxy,
@@ -599,18 +625,24 @@ def main(
     # Command line option > Environment variable > Configuration file
 
     # If the environment variable is set overwrite the configuration
+    if os.environ.get(ENV_VAR_ANTHROPIC)
     if os.environ.get(ENV_VAR):
         config["api-key"] = os.environ[ENV_VAR].strip()
+    
     # If the --key command line argument is used overwrite the configuration
     if api_key:
         if config["supplier"] == "openai":
             config["api-key"] = api_key.strip()
+        elif config["supplier"] == "anthropic":
+            config["anthropic_api_key"] = api_key.strip()
         else:
             config["azure_api_key"] = api_key.strip()
     # If the --model command line argument is used overwrite the configuration
     if model:
         if config["supplier"] == "openai":
             config["model"] = model.strip()
+        elif config["supplier"] == "anthropic":
+            config["anthropic_model"] = model.strip()
         else:
             config["azure_deployment_name"] = model.strip()
 
@@ -627,6 +659,8 @@ def main(
 
     if config["supplier"] == "azure":
         model = config["azure_deployment_name"]
+    elif config["supplier"] == "anthropic":
+        model = config["anthropic_model"]
     elif config["supplier"] == "openai":
         model = config["model"]
 
