@@ -165,3 +165,6 @@ session-history/
 
 # JetBrains IDE config files
 .idea/
+claude-cli.diff
+src/chatgpt_2.py
+src/chatgpt_transformed.py
