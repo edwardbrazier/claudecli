@@ -1,4 +1,8 @@
 #!/bin/env python
+"""
+This script provides an interactive command-line interface for interacting with the Anthropic AI API.
+It allows users to send prompts and receive responses from the AI model.
+"""
 
 import atexit
 import click
@@ -64,9 +68,36 @@ def start_prompt(
     proxy: dict | None,
 ) -> None:
     """
-    Ask the user for input, build the request and perform it
+    Ask the user for input, build the request and perform it.
+
+    Args:
+        initial_context (str): The initial context or prompt to provide to the AI model.
+        session (PromptSession): The prompt session object for interactive input.
+        config (dict): The configuration dictionary containing settings for the API request.
+        copyable_blocks (Optional[dict]): A dictionary containing code blocks that can be copied to the clipboard.
+        proxy (dict | None): A dictionary containing proxy settings, or None if no proxy is used.
+
+    Preconditions:
+        - The `messages` list is initialized and contains the conversation history.
+        - The `prompt_tokens` and `completion_tokens` variables are initialized to track token usage.
+        - The `console` object is initialized for logging and output.
+
+    Side effects:
+        - Modifies the `messages` list by appending new messages from the user and the AI model.
+        - Updates the `prompt_tokens` and `completion_tokens` variables with the token usage for the current request.
+        - Prints the AI model's response to the console.
+        - Saves the conversation history to a file.
+        - Copies code blocks to the clipboard if the user requests it.
+
+    Exceptions:
+        - EOFError: Raised when the user enters "/q" to quit the program.
+        - KeyboardInterrupt: Raised when the user enters an empty prompt or when certain errors occur during the API request.
+        - requests.ConnectionError: Raised when there is a connection error with the API server.
+        - requests.Timeout: Raised when the API request times out.
+
+    Returns:
+        None
     """
-    
 
     # TODO: Refactor to avoid a global variables
     global prompt_tokens, completion_tokens

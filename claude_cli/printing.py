@@ -28,7 +28,26 @@ import constants
 
 def display_expense(logger: logging.Logger, model: str, prompt_tokens: int, completion_tokens: int) -> None:
     """
-    Given the model used, display total tokens used and estimated expense
+    Display the total tokens used and estimated expense for a given model.
+
+    Args:
+        logger (logging.Logger): The logger instance to use for logging.
+        model (str): The name of the model used.
+        prompt_tokens (int): The number of tokens in the prompt.
+        completion_tokens (int): The number of tokens in the completion.
+
+    Preconditions:
+        - The `model` argument must be a valid model name.
+        - The `prompt_tokens` and `completion_tokens` arguments must be non-negative integers.
+
+    Side effects:
+        - Logs the total tokens used and estimated expense to the console.
+
+    Exceptions:
+        None.
+
+    Returns:
+        None.
     """
     logger.info(
         f"\nTotal tokens used: [green bold]{prompt_tokens + completion_tokens}",
@@ -56,7 +75,25 @@ def display_expense(logger: logging.Logger, model: str, prompt_tokens: int, comp
 def print_markdown(console: Console, content: str, code_blocks: Optional[dict] = None):
     """
     Print markdown formatted text to the terminal.
-    If code_blocks is present, label each code block with an integer and store in the code_blocks map.
+
+    Args:
+        console (Console): The Rich console instance to use for printing.
+        content (str): The markdown content to print.
+        code_blocks (Optional[dict]): An optional dictionary to store code blocks.
+
+    Preconditions:
+        - The `content` argument must be a valid string containing markdown.
+        - If `code_blocks` is provided, it must be a dictionary.
+
+    Side effects:
+        - Prints the markdown content to the console.
+        - If `code_blocks` is provided, it will be modified to store any code blocks found in the content.
+
+    Exceptions:
+        None.
+
+    Returns:
+        None.
     """
     if code_blocks is None:
         console.print(Markdown(content))

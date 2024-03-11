@@ -1,4 +1,19 @@
-#!/bin/env python
+"""
+Utility functions for loading configuration, history data, and codebase files.
+
+This module provides functions to:
+1. Load a YAML configuration file, creating it with default values if it doesn't exist.
+2. Load a JSON session history file.
+3. Get the timestamp of the last saved session.
+4. Load and concatenate the contents of files in a directory and its subdirectories,
+   with headers indicating each file's path relative to the base path.
+
+Functions:
+    load_config(logger, config_file)
+    load_history_data(history_file)
+    get_last_save_file()
+    load_codebase(logger, base_path, extensions)
+"""
 
 import atexit
 import click
@@ -24,13 +39,27 @@ from xdg_base_dirs import xdg_config_home
 
 import constants
 
-
-
 def load_config(logger: logging.Logger, config_file: str) -> dict:
     """
-    Read a YAML config file and returns its content as a dictionary.
-    If the config file is missing, create one with default values.
-    If the config file is present but missing keys, populate them with defaults.
+    Read a YAML config file and return its content as a dictionary.
+
+    Args:
+        logger (logging.Logger): Logger instance for logging messages.
+        config_file (str): Path to the YAML configuration file.
+
+    Preconditions:
+        - The config_file path is a valid file path.
+
+    Side effects:
+        - If the config file does not exist, it is created with default configurations.
+        - If the config file is missing keys, they are populated with default values.
+
+    Exceptions:
+        None
+
+    Returns:
+        dict: The configuration data loaded from the YAML file.
+        Guarantees: The returned dictionary will contain all required configuration keys.
     """
     # If the config file does not exist, create one with default configurations
     if not Path(config_file).exists():
@@ -53,7 +82,23 @@ def load_config(logger: logging.Logger, config_file: str) -> dict:
 
 def load_history_data(history_file: str) -> dict:
     """
-    Read a session history json file and return its content
+    Read a session history JSON file and return its content.
+
+    Args:
+        history_file (str): Path to the JSON history file.
+
+    Preconditions:
+        - The history_file path is a valid file path.
+
+    Side effects:
+        None
+
+    Exceptions:
+        None
+
+    Returns:
+        dict: The session history data loaded from the JSON file.
+        Guarantees: The returned dictionary will contain the session history data.
     """
     with open(history_file, encoding="utf-8") as file:
         content = json.loads(file.read())
@@ -63,7 +108,23 @@ def load_history_data(history_file: str) -> dict:
 
 def get_last_save_file() -> str:
     """
-    Return the timestamp of the last saved session
+    Return the timestamp of the last saved session.
+
+    Args:
+        None
+
+    Preconditions:
+        - The SAVE_FOLDER directory exists and contains session history files.
+
+    Side effects:
+        None
+
+    Exceptions:
+        None
+
+    Returns:
+        str: The timestamp of the last saved session, or None if no session files exist.
+        Guarantees: The returned string will be a valid timestamp or None.
     """
     files = [f for f in os.listdir(constants.SAVE_FOLDER) if f.endswith(".json")]
     if files:
@@ -76,26 +137,36 @@ def get_last_save_file() -> str:
 
 def load_codebase(logger: logging.Logger, base_path: str, extensions: List[str]) -> str:
     """
-    Concatenates the contents of files in the given directory and its subdirectories
+    Concatenate the contents of files in the given directory and its subdirectories
     that match the specified file extensions.
 
-    Parameters:
-    - base_path (str): The starting directory path to search for files.
-    - extensions (List[str]): A list of file extension strings to include (e.g., ['py', 'txt']).
+    Args:
+        logger (logging.Logger): Logger instance for logging messages.
+        base_path (str): The starting directory path to search for files.
+        extensions (List[str]): A list of file extension strings to include (e.g., ['py', 'txt']).
+
+    Preconditions:
+        - The base_path is a valid directory path.
+        - The extensions list contains valid file extension strings.
+
+    Side effects:
+        None
+
+    Exceptions:
+        ValueError: If base_path does not exist or is not a directory.
+        FileNotFoundError: If no matching files are found.
 
     Returns:
-    - str: A single string containing the concatenated contents of all matching files,
-           with headers indicating each file's path relative to base_path.
-
-    Raises:
-    - ValueError: If base_path does not exist or is not a directory.
-    - FileNotFoundError: If no matching files are found.
+        str: A single string containing the concatenated contents of all matching files,
+             with headers indicating each file's path relative to base_path.
+        Guarantees: The returned string will contain the concatenated file contents,
+                    or an empty string if no matching files are found.
     """
 
     # Verify the base path exists and is a directory
     if not os.path.exists(base_path) or not os.path.isdir(base_path):
         raise ValueError(f"The path {base_path} does not exist or is not a directory.")
-    
+
     concatenated_contents = ""
     matched_files_found = False
 

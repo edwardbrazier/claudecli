@@ -1,3 +1,8 @@
+"""
+This module provides a command-line interface for interacting with the Anthropic AI model.
+It allows users to provide context from local files or directories, set various options,
+and engage in a conversational session with the model.
+"""
 
 import atexit
 import click
@@ -31,7 +36,7 @@ from  interact import *
     "sources",
     type=click.Path(exists=True),
     help="Pass an entire codebase to the model as context, from the specified location. "
-        "Repeat this option and its argument any number of times.",
+         "Repeat this option and its argument any number of times.",
     multiple=True,
 )
 @click.option(
@@ -40,7 +45,7 @@ from  interact import *
     "file_extensions",
     required=False,
     help="File name extensions of files to look at in the codebase, separated by commas without spaces, e.g. py,txt,md "
-        "Only use this option once, even for multiple codebases."
+         "Only use this option once, even for multiple codebases."
 )
 @click.option(
     "-c",
@@ -75,6 +80,37 @@ def main(
     sources, context, api_key, model, multiline, restore, non_interactive, json_mode,
     file_extensions
 ) -> None:
+    """
+    Main entry point for the CLI.
+
+    Args:
+        sources (List[str]): Paths to directories containing source code to provide as context.
+        context (List[File]): Files containing additional context to provide.
+        api_key (str): API key to use for authentication.
+        model (str): Name of the AI model to use.
+        multiline (bool): Whether to enable multiline input mode.
+        restore (str): Identifier for a previous chat session to restore.
+        non_interactive (bool): Whether to run in non-interactive mode (for piping).
+        json_mode (bool): Whether to enable JSON response mode.
+        file_extensions (str): Comma-separated list of file extensions to consider in source directories.
+
+    Preconditions:
+        - The provided source directories and context files must exist and be readable.
+        - The API key must be valid and have sufficient permissions.
+
+    Side effects:
+        - Prints output to the console.
+        - Saves chat history to disk.
+        - Copies output to the clipboard (if enabled).
+
+    Exceptions:
+        - FileNotFoundError: Raised if a provided source directory or context file does not exist.
+        - Other exceptions may be raised by external libraries or the AI model.
+
+    Returns:
+        None
+    """
+
     # If non interactive suppress the logging messages
     if non_interactive:
         logger.setLevel("ERROR")
