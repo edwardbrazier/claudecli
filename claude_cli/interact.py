@@ -24,12 +24,13 @@ from xdg_base_dirs import xdg_config_home
 
 import constants
 import load
-import print
+import printing
 import save
 
 global prompt_tokens, completion_tokens
 
 logger = logging.getLogger("rich")
+
 logging.basicConfig(
     level="INFO",
     format="%(message)s",
@@ -53,7 +54,7 @@ def add_markdown_system_message() -> None:
     Try to force ChatGPT to always respond with well formatted code blocks and tables if markdown is enabled.
     """
     instruction = "Always use code blocks with the appropriate language tags. If asked for a table always format it using Markdown syntax."
-    messages.append({"role": "system", "content": instruction})
+    #messages.append({"role": "system", "content": instruction})
 
 def start_prompt(
     session: PromptSession,
@@ -64,6 +65,7 @@ def start_prompt(
     """
     Ask the user for input, build the request and perform it
     """
+    
 
     # TODO: Refactor to avoid a global variables
     global prompt_tokens, completion_tokens
@@ -111,37 +113,46 @@ def start_prompt(
     api_key = config["anthropic_api_key"]
     model = config["anthropic_model"]
     base_endpoint = config["anthropic_api_url"]
+    
+    client = anthropic.Anthropic(api_key=api_key)
 
     # Base body parameters
     body = {
         "model": model,
-        "temperature": config["temperature"],
+        "max_tokens": 4000,
+        "temperature": 0, # config["temperature"],
         "messages": messages,
     }
     # Optional parameters
-    if "max_tokens" in config:
-        body["max_tokens"] = config["max_tokens"]
-    if config["json_mode"]:
-        body["response_format"] = {"type": "json_object"}
+    #if "max_tokens" in config:
+    #    body["max_tokens"] = config["max_tokens"]
+    #if config["json_mode"]:
+    #    body["response_format"] = {"type": "json_object"}
 
     try:
-        headers = {
-            "Content-Type": "application/json",
-            "X-API-Key": api_key,
-        }
-        body = {
-            "model": model,
-            "prompt": f"{messages[-2]['content']}\n\nHuman: {messages[-1]['content']}\n\nAssistant:",
-            "max_tokens_to_sample": config.get("max_tokens", 500),
-            "stop_sequences": ["\n\nHuman:"],
-            "temperature": config["temperature"],
-        }
-        r = requests.post(
-            f"{base_endpoint}/v1/complete",
-            headers=headers,
-            json=body,
-            proxies=proxy,
+        response = client.messages.create(
+            model=model,
+            max_tokens=4000,
+            temperature=0.0,
+            messages=messages,
         )
+        # headers = {
+        #     "Content-Type": "application/json",
+        #     "X-API-Key": api_key,
+        # }
+        # body = {
+        #     "model": model,
+        #     "prompt": f"{messages[-2]['content']}\n\nHuman: {messages[-1]['content']}\n\nAssistant:",
+        #     "max_tokens_to_sample": config.get("max_tokens", 500),
+        #     "stop_sequences": ["\n\nHuman:"],
+        #     "temperature": config["temperature"],
+        # }
+        # r = requests.post(
+        #     f"{base_endpoint}/v1/complete",
+        #     headers=headers,
+        #     json=body,
+        #     proxies=proxy,
+        # )
     except requests.ConnectionError:
         logger.error(
             "[red bold]Connection error, try again...", extra={"highlighter": None}
@@ -155,77 +166,91 @@ def start_prompt(
         messages.pop()
         raise KeyboardInterrupt
 
-    match r.status_code:
-        case 200:
-            response = r.json()
+    content = response.content
 
-            message_response = {"content": response["content"][0]["text"]}
-            usage_response = {"prompt_tokens": response["usage"]["input_tokens"], "completion_tokens": response["usage"]["output_tokens"]}
-
+    for element in content:
+        if element.type == "text":
+            t = element.text
+            print(t, end='')
+            messages.append({"role": "assistant", "content": t})
+            
             if not config["non_interactive"]:
                 console.line()
-            if config["markdown"]:
-                print.print_markdown(message_response["content"].strip(), copyable_blocks)
-            else:
-                print(message_response["content"].strip())
-            if not config["non_interactive"]:
-                console.line()
+        else:
+            print(element)
 
-            # Update message history and token counters
-            messages.append({"role": response["role"], "content": message_response["content"]})
-            prompt_tokens += usage_response["prompt_tokens"]
-            completion_tokens += usage_response["completion_tokens"]
-            save.save_history(model, messages, prompt_tokens, completion_tokens)
 
-            if config["non_interactive"]:
-                # In non-interactive mode there is no looping back for a second prompt, you're done.
-                raise EOFError
+    # match response.status_code:
+    #     case 200:
+    #         response = r.json()
 
-        case 400:
-            response = r.json()
-            if "error" in response:
-                logger.error(
-                    f"[red bold]{response['error']}",
-                    extra={"highlighter": None},
-                )
-            logger.error("[red bold]Invalid request", extra={"highlighter": None})
-            raise EOFError
+    #         message_response = {"content": response["content"][0]["text"]}
+    #         usage_response = {"prompt_tokens": response["usage"]["input_tokens"], "completion_tokens": response["usage"]["output_tokens"]}
 
-        case 401:
-            logger.error("[red bold]Invalid API Key", extra={"highlighter": None})
-            raise EOFError
+    #         if not config["non_interactive"]:
+    #             console.line()
+    #         if config["markdown"]:
+    #             print.print_markdown(message_response["content"].strip(), copyable_blocks)
+    #         else:
+    #             print(message_response["content"].strip())
+    #         if not config["non_interactive"]:
+    #             console.line()
 
-        case 429:
-            logger.error(
-                "[red bold]Rate limit or maximum monthly limit exceeded",
-                extra={"highlighter": None},
-            )
-            messages.pop()
-            raise KeyboardInterrupt
+    #         # Update message history and token counters
+    #         messages.append({"role": response["role"], "content": message_response["content"]})
+    #         prompt_tokens += usage_response["prompt_tokens"]
+    #         completion_tokens += usage_response["completion_tokens"]
+    #         save.save_history(model, messages, prompt_tokens, completion_tokens)
 
-        case 500:
-            logger.error(
-                "[red bold]Internal server error",
-                extra={"highlighter": None},
-            )
-            messages.pop()
-            raise KeyboardInterrupt
+    #         if config["non_interactive"]:
+    #             # In non-interactive mode there is no looping back for a second prompt, you're done.
+    #             raise EOFError
 
-        case 502 | 503:
-            logger.error(
-                "[red bold]The server seems to be overloaded, try again",
-                extra={"highlighter": None},
-            )
-            messages.pop()
-            raise KeyboardInterrupt
+    #     case 400:
+    #         response = r.json()
+    #         if "error" in response:
+    #             logger.error(
+    #                 f"[red bold]{response['error']}",
+    #                 extra={"highlighter": None},
+    #             )
+    #         logger.error("[red bold]Invalid request", extra={"highlighter": None})
+    #         raise EOFError
 
-        case _:
-            logger.error(
-                f"[red bold]Unknown error, status code {r.status_code}",
-                extra={"highlighter": None},
-            )
-            logger.error(r.json(), extra={"highlighter": None})
-            raise EOFError
+    #     case 401:
+    #         logger.error("[red bold]Invalid API Key", extra={"highlighter": None})
+    #         raise EOFError
+
+    #     case 429:
+    #         logger.error(
+    #             "[red bold]Rate limit or maximum monthly limit exceeded",
+    #             extra={"highlighter": None},
+    #         )
+    #         messages.pop()
+    #         raise KeyboardInterrupt
+
+    #     case 500:
+    #         logger.error(
+    #             "[red bold]Internal server error",
+    #             extra={"highlighter": None},
+    #         )
+    #         messages.pop()
+    #         raise KeyboardInterrupt
+
+    #     case 502 | 503:
+    #         logger.error(
+    #             "[red bold]The server seems to be overloaded, try again",
+    #             extra={"highlighter": None},
+    #         )
+    #         messages.pop()
+    #         raise KeyboardInterrupt
+
+    #     case _:
+    #         logger.error(
+    #             f"[red bold]Unknown error, status code {r.status_code}",
+    #             extra={"highlighter": None},
+    #         )
+    #         logger.error(r.json(), extra={"highlighter": None})
+    #         raise EOFError
 
 
 
