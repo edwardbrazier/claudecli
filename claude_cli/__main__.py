@@ -79,7 +79,7 @@ def main(
     if non_interactive:
         logger.setLevel("ERROR")
 
-    logger.info("[bold]ChatGPT CLI", extra={"highlighter": None})
+    logger.info("[bold]Claude CLI", extra={"highlighter": None})
 
     history = FileHistory(constants.HISTORY_FILE)
 
@@ -146,6 +146,8 @@ def main(
     if config["markdown"]:
         add_markdown_system_message()
 
+    initial_context = ''
+
     # Source code location from command line option
     if sources:
         for source in sources:
@@ -168,7 +170,7 @@ def main(
 
             try:
                 codebase = load.load_codebase(logger, source, extensions)
-                messages.append({"role": "system", "content": codebase})
+                initial_context = codebase
                 
                 # Show the user how big the entire codebase is, in kb. 
                 logger.info(
@@ -183,7 +185,8 @@ def main(
             logger.info(
                 f"Context file: [green bold]{c.name}", extra={"highlighter": None}
             )
-            messages.append({"role": "system", "content": c.read().strip()})
+            initial_context = codebase
+    #         messages.append({"role": "user", "content": c.read().strip()})
 
     # Restore a previous session
     if restore:
@@ -221,7 +224,7 @@ def main(
 
     while True:
         try:
-            start_prompt(session, config, copyable_blocks, proxy)
+            start_prompt(initial_context, session, config, copyable_blocks, proxy)
         except KeyboardInterrupt:
             continue
         except EOFError:

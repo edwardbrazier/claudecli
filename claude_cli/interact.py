@@ -57,6 +57,7 @@ def add_markdown_system_message() -> None:
     #messages.append({"role": "system", "content": instruction})
 
 def start_prompt(
+    initial_context: str,
     session: PromptSession,
     config: dict,
     copyable_blocks: Optional[dict],
@@ -108,7 +109,7 @@ def start_prompt(
             logger.info(f"Copied previous response to clipboard")
         raise KeyboardInterrupt
 
-    messages.append({"role": "user", "content": message})
+    messages.append({"role": "user", "content": initial_context + message})
 
     api_key = config["anthropic_api_key"]
     model = config["anthropic_model"]
