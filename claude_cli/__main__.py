@@ -27,7 +27,7 @@ from typing import Optional, List
 from xdg_base_dirs import xdg_config_home
 
 import pure
-from  interact import *
+from interact import *
 
 @click.command()
 @click.option(
@@ -134,7 +134,7 @@ def main(
 
     save.create_save_folder()
 
-    # check proxy setting
+    # Check proxy setting
     if config["use_proxy"]:
         proxy = {"http": config["proxy"], "https": config["proxy"]}
     else:
@@ -143,22 +143,21 @@ def main(
     # Order of precedence for API Key configuration:
     # Command line option > Environment variable > Configuration file
 
-    # If the environment variable is set overwrite the configuration
+    # If the environment variable is set, overwrite the configuration
     if os.environ.get(constants.ENV_VAR_ANTHROPIC):
         config["anthropic_api_key"] = os.environ[constants.ENV_VAR_ANTHROPIC].strip()
     
-    # If the --key command line argument is used overwrite the configuration
+    # If the --key command line argument is used, overwrite the configuration
     if api_key:
         config["anthropic_api_key"] = api_key.strip()
 
-    # If the --model command line argument is used overwrite the configuration
+    # If the --model command line argument is used, overwrite the configuration
     if model:
         config["anthropic_model"] = model.strip()
 
     config["non_interactive"] = non_interactive
 
-    # Do not emit markdown in this case; ctrl character formatting interferes in several contexts including json
-    # output.
+    # Do not emit markdown in non-interactive mode, as ctrl character formatting interferes in several contexts including json output.
     if config["non_interactive"]:
         config["markdown"] = False
 
