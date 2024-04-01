@@ -28,6 +28,8 @@ from xdg_base_dirs import xdg_config_home
 
 import pure
 from interact import *
+import constants
+import load
 
 @click.command()
 @click.option(
@@ -76,9 +78,23 @@ from interact import *
 @click.option(
     "-j", "--json", "json_mode", is_flag=True, help="Activate json response mode"
 )
+@click.option(
+    "-o",
+    "--output-dir",
+    "output_dir",
+    type=click.Path(exists=True),
+    help="The output directory for generated files when using the /o command.",
+)
+@click.option(
+    "-f",
+    "--force",
+    "force",
+    is_flag=True,
+    help="Force overwrite of output files if they already exist."
+)
 def main(
     sources, context, api_key, model, multiline, restore, non_interactive, json_mode,
-    file_extensions
+    file_extensions, output_dir, force
 ) -> None:
     """
     Main entry point for the CLI.
@@ -93,6 +109,8 @@ def main(
         non_interactive (bool): Whether to run in non-interactive mode (for piping).
         json_mode (bool): Whether to enable JSON response mode.
         file_extensions (str): Comma-separated list of file extensions to consider in source directories.
+        output_dir (str): The output directory for generated files when using the /o command.
+        force (bool): Whether to force overwrite of output files if they already exist.
 
     Preconditions:
         - The provided source directories and context files must exist and be readable.
@@ -102,6 +120,7 @@ def main(
         - Prints output to the console.
         - Saves chat history to disk.
         - Copies output to the clipboard (if enabled).
+        - Writes generated files to the output directory when using the /o command.
 
     Exceptions:
         - FileNotFoundError: Raised if a provided source directory or context file does not exist.
@@ -178,8 +197,8 @@ def main(
     logger.info(f"Model in use: [green bold]{model}", extra={"highlighter": None})
 
     # Add the system message for code blocks in case markdown is enabled in the config file
-    if config["markdown"]:
-        add_markdown_system_message()
+    # if config["markdown"]:
+        # add_markdown_system_message()
 
     initial_context = ""
 
@@ -259,7 +278,7 @@ def main(
 
     while True:
         try:
-            start_prompt(initial_context, session, config, copyable_blocks, proxy)
+            start_prompt(initial_context, session, config, copyable_blocks, proxy, output_dir, force)
         except KeyboardInterrupt:
             continue
         except EOFError:

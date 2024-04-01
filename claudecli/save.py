@@ -16,6 +16,7 @@ import requests
 import sys
 import yaml
 import anthropic
+import xml.sax.saxutils
 
 from pathlib import Path
 from prompt_toolkit import PromptSession, HTML
@@ -27,6 +28,8 @@ from typing import Optional, List
 from xdg_base_dirs import xdg_config_home
 
 import constants
+
+console = Console()
 
 def create_save_folder() -> None:
     """
@@ -88,5 +91,54 @@ def save_history(
             ensure_ascii=False,
         )
 
+def write_files( \
+        output_dir: str, \
+        file_data: list[tuple[str, str, str]], \
+        force_overwrite: bool = False) \
+        -> None:
+    """
+    Write the given file data to disk in the specified output directory, regardless of
+    its original location.
 
+    Args:
+        output_dir (str): The directory to write the files to.
+        file_data (List[tuple[str, str, str]]): A list of tuples containing the file path, contents, and changes.
+        force_overwrite (bool): Whether to force overwriting existing files.
 
+    Preconditions:
+        - file_data is a list of tuples, where each tuple contains a valid file path, contents and changes.
+
+    Side effects:
+        - Creates new files or overwrites existing files on disk.
+        - Creates new folders as required
+
+    Exceptions:
+        None
+
+    Returns:
+        None
+        guarantees: The specified files are written to disk.
+    """
+    assert isinstance(output_dir, str), "output_dir must be a string"
+    assert isinstance(file_data, list), "file_data must be a list"
+    assert all(isinstance(fd, tuple) and len(fd) == 3 for fd in file_data), "file_data must be a list of tuples with 3 elements"
+    assert isinstance(force_overwrite, bool), "force_overwrite must be a bool"
+
+    for relative_path, contents, _ in file_data:
+        file_name = os.path.basename(relative_path)
+        output_file = os.path.join(output_dir, file_name)
+
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        if not force_overwrite and os.path.exists(output_file):
+            console.print(f"[bold yellow]{output_file} already exists. Skipping...[/bold yellow]")
+        else:
+            console.print(f"[bold green]Writing to {output_file}...[/bold green]")
+            
+            # Unescape special characters in the contents before writing to file
+            unescaped_contents = xml.sax.saxutils.unescape(contents)
+            
+            with open(output_file, "w") as f:
+                f.write(unescaped_contents)
+                f.close()

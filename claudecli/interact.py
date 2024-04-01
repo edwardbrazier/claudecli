@@ -4,34 +4,33 @@ This script provides an interactive command-line interface for interacting with 
 It allows users to send prompts and receive responses from the AI model.
 """
 
-import atexit
-import click
-import datetime
-import json
+# import atexit
+# import click
+# import datetime
+# import json
 import logging
 import os
-import pyperclip
+# import pyperclip
 import re
 import requests
 import sys
-import yaml
+# import yaml
 import anthropic
 
-from pathlib import Path
+# from pathlib import Path
 from prompt_toolkit import PromptSession, HTML
-from prompt_toolkit.history import FileHistory
+# from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.markdown import Markdown
-from typing import Optional, List
-from xdg_base_dirs import xdg_config_home
+# from rich.markdown import Markdown
+from typing import Optional
+# from xdg_base_dirs import xdg_config_home
 
-import constants
-import load
-import printing
+# import constants
+# import load
+# import printing
 import save
-
-global prompt_tokens, completion_tokens
+from parseaicode import process_assistant_response, ResponseContent, FileData
 
 logger = logging.getLogger("rich")
 
@@ -47,18 +46,15 @@ logging.basicConfig(
 # Initialize the messages history list
 # It's mandatory to pass it at each API call in order to have a conversation
 messages = []
-# Initialize the token counters
-prompt_tokens = 0
-completion_tokens = 0
 # Initialize the console
 console = Console()
 
-def add_markdown_system_message() -> None:
-    """
-    Try to force ChatGPT to always respond with well formatted code blocks and tables if markdown is enabled.
-    """
-    instruction = "Always use code blocks with the appropriate language tags. If asked for a table always format it using Markdown syntax."
-    #messages.append({"role": "system", "content": instruction})
+# def add_markdown_system_message() -> None:
+#     """
+#     Try to force Claude to always respond with well formatted code blocks and tables if markdown is enabled.
+#     """
+#     instruction = "Always use code blocks with the appropriate language tags. If asked for a table always format it using Markdown syntax."
+#     #messages.append({"role": "system", "content": instruction})
 
 def start_prompt(
     initial_context: str,
@@ -66,6 +62,8 @@ def start_prompt(
     config: dict,
     copyable_blocks: Optional[dict],
     proxy: dict | None,
+    output_dir: str,
+    force_overwrite: bool
 ) -> None:
     """
     Ask the user for input, build the request and perform it.
@@ -76,18 +74,19 @@ def start_prompt(
         config (dict): The configuration dictionary containing settings for the API request.
         copyable_blocks (Optional[dict]): A dictionary containing code blocks that can be copied to the clipboard.
         proxy (dict | None): A dictionary containing proxy settings, or None if no proxy is used.
+        output_dir (str): The output directory for generated files when using the /o command.
+        force_overwrite (bool): Whether to force overwrite of output files if they already exist.
 
     Preconditions:
         - The `messages` list is initialized and contains the conversation history.
-        - The `prompt_tokens` and `completion_tokens` variables are initialized to track token usage.
         - The `console` object is initialized for logging and output.
 
     Side effects:
         - Modifies the `messages` list by appending new messages from the user and the AI model.
-        - Updates the `prompt_tokens` and `completion_tokens` variables with the token usage for the current request.
         - Prints the AI model's response to the console.
         - Saves the conversation history to a file.
         - Copies code blocks to the clipboard if the user requests it.
+        - Writes generated files to the output directory when using the /o command.
 
     Exceptions:
         - EOFError: Raised when the user enters "/q" to quit the program.
@@ -99,16 +98,13 @@ def start_prompt(
         None
     """
 
-    # TODO: Refactor to avoid a global variables
-    global prompt_tokens, completion_tokens
-
     message = ""
 
     if config["non_interactive"]:
         message = sys.stdin.read()
     else:
         message = session.prompt(
-            HTML(f"<b>[{prompt_tokens + completion_tokens}] >>> </b>")
+            HTML(f"<b>[{len(messages)}] >>> </b>")
         )
 
     if message.lower().strip() == "/q":
@@ -140,26 +136,27 @@ def start_prompt(
             logger.info(f"Copied previous response to clipboard")
         raise KeyboardInterrupt
 
+    if message.lower().startswith("/o"):
+        # Remove the "/o" from the message
+        message = message[2:].strip()
+        write_output =  True
+        
+        # Add instructions for escaping special characters in XML
+        message += "\nMake sure to escape characters correctly inside the XML!"
+    else:
+        write_output = False
+
     messages.append({"role": "user", "content": initial_context + message})
+
+    if write_output:
+        # Provide a partial assistant message to the model
+        messages.append({"role": "assistant", "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"})
 
     api_key = config["anthropic_api_key"]
     model = config["anthropic_model"]
     base_endpoint = config["anthropic_api_url"]
     
     client = anthropic.Anthropic(api_key=api_key)
-
-    # Base body parameters
-    body = {
-        "model": model,
-        "max_tokens": 4000,
-        "temperature": 0, # config["temperature"],
-        "messages": messages,
-    }
-    # Optional parameters
-    #if "max_tokens" in config:
-    #    body["max_tokens"] = config["max_tokens"]
-    #if config["json_mode"]:
-    #    body["response_format"] = {"type": "json_object"}
 
     try:
         response = client.messages.create(
@@ -168,23 +165,6 @@ def start_prompt(
             temperature=0.0,
             messages=messages,
         )
-        # headers = {
-        #     "Content-Type": "application/json",
-        #     "X-API-Key": api_key,
-        # }
-        # body = {
-        #     "model": model,
-        #     "prompt": f"{messages[-2]['content']}\n\nHuman: {messages[-1]['content']}\n\nAssistant:",
-        #     "max_tokens_to_sample": config.get("max_tokens", 500),
-        #     "stop_sequences": ["\n\nHuman:"],
-        #     "temperature": config["temperature"],
-        # }
-        # r = requests.post(
-        #     f"{base_endpoint}/v1/complete",
-        #     headers=headers,
-        #     json=body,
-        #     proxies=proxy,
-        # )
     except requests.ConnectionError:
         logger.error(
             "[red bold]Connection error, try again...", extra={"highlighter": None}
@@ -200,10 +180,13 @@ def start_prompt(
 
     content = response.content
 
+    concatenated_output = ""
+
     for element in content:
         if element.type == "text":
             t = element.text
             print(t, end='')
+            concatenated_output += t
             messages.append({"role": "assistant", "content": t})
             
             if not config["non_interactive"]:
@@ -211,6 +194,42 @@ def start_prompt(
         else:
             print(element)
 
+    if write_output:
+        try:
+            response_content = ResponseContent(
+                content_string=concatenated_output,
+                file_data_list=process_assistant_response(concatenated_output)
+            )
+
+            if response_content is None:
+                console.print("[bold red]Failed to get a response from the AI.[/bold red]")
+            else:
+                # Write concatenated output to an xml file in output_dir
+                concat_file_path = os.path.join(output_dir, "concatenated_output.txt")
+
+                console.print(f"\n[bold green]Writing complete AI output to {concat_file_path}[/bold green]")
+
+                with open(concat_file_path, "w") as f:
+                    f.write(response_content.content_string)
+                    f.close()
+
+                file_data_list = response_content.file_data_list
+
+                console.print("[bold green]Files included in the result:[/bold green]")
+
+                if len(file_data_list) == 0:
+                    console.print("Nil.")
+                else:
+                    for relative_path, _, changes in file_data_list:
+                        console.print(f"[bold magenta]- {relative_path}[/bold magenta]\n[bold green]Changes:[/bold green] {changes}\n")
+
+                    console.print("\n")
+
+                    save.write_files(output_dir, file_data_list, force_overwrite)    
+
+            console.print("[bold green]Done![/bold green]")
+        except Exception as e:
+            console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
 
     # match response.status_code:
     #     case 200:
