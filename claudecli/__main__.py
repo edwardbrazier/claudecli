@@ -181,7 +181,7 @@ def main(
     if config["markdown"]:
         add_markdown_system_message()
 
-    initial_context = ''
+    initial_context = ""
 
     # Source code location from command line option
     if sources:
@@ -205,7 +205,7 @@ def main(
 
             try:
                 codebase = load.load_codebase(logger, source, extensions)
-                initial_context = codebase
+                initial_context += codebase
                 
                 # Show the user how big the entire codebase is, in kb. 
                 logger.info(

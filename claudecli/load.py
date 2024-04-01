@@ -180,13 +180,15 @@ def load_codebase(logger: logging.Logger, base_path: str, extensions: List[str])
                 file_path = Path(root) / file_name
                 relative_path = file_path.relative_to(base_path)
 
-                for encoding in encodings:
-                    try:
-                        with open(file_path, 'r', encoding=encoding) as file:
-                            contents = file.read()
-                            concatenated_contents += f"### {relative_path} ###\n{contents}\n\n" 
-                    except Exception as e:
-                        logger.warning(f"Failed to open file {file_path} with encoding {encoding}: {e}")
+                if "__pycache__" not in str(relative_path):
+                    logger.info(f"Loading file: {file_path}")
+                    for encoding in encodings:
+                        try:
+                            with open(file_path, 'r', encoding=encoding) as file:
+                                contents = file.read()
+                                concatenated_contents += f"### {relative_path} ###\n{contents}\n\n" 
+                        except Exception as e:
+                            logger.warning(f"Failed to open file {file_path} with encoding {encoding}: {e}")
 
     if not matched_files_found:
         raise FileNotFoundError("No matching files found.")

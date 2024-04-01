@@ -32,7 +32,7 @@ DEFAULT_CONFIG = {
     "supplier": "anthropic",
     "anthropic-api-key": "<INSERT YOUR ANTHROPIC API KEY HERE>",
     "anthropic_api_url": "https://api.anthropic.com",
-    "anthropic_model": "claude-3-opus-20240229",
+    "anthropic_model": "claude-3-haiku-20240307",
     "temperature": 1,
     "markdown": True,
     "easy_copy": True,
