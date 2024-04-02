@@ -14,19 +14,19 @@ Address = Tuple[str, int]
 Server = Tuple[Address, ConnectionOptions]
 
 # Define paths for configuration and history files
-BASE = Path(xdg_config_home(), "chatgpt-cli")
+BASE = Path(xdg_config_home(), "claudecli")
 CONFIG_FILE = BASE / "config.yaml"
 HISTORY_FILE = BASE / "history"
-SAVE_FOLDER = BASE / "session-history"
+SAVE_FOLDER: Path = BASE / "session-history"
 SAVE_FILE = (
     "claude-session-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".json"
 )
 ENV_VAR_ANTHROPIC = "ANTHROPIC_API_KEY"
 
-PRICING_RATE = {
-    "claude-3-opus-20240229": {"prompt": 0.0005, "completion": 0.0015},
-    "claude-3-sonnet-20240229": {"prompt": 0.0005, "completion": 0.0015},
-}
+# PRICING_RATE = {
+#     "claude-3-opus-20240229": {"prompt": 0.0005, "completion": 0.0015},
+#     "claude-3-sonnet-20240229": {"prompt": 0.0005, "completion": 0.0015},
+# }
 
 DEFAULT_CONFIG = {
     "supplier": "anthropic",
@@ -41,3 +41,8 @@ DEFAULT_CONFIG = {
     "use_proxy": False,
     "proxy": "socks5://127.0.0.1:2080",
 }
+
+
+opus = "claude-3-opus-20240229"
+sonnet = "claude-3-sonnet-20240229"
+haiku = "claude-3-haiku-20240307"

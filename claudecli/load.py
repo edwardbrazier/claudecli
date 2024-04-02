@@ -15,31 +15,31 @@ Functions:
     load_codebase(logger, base_path, extensions)
 """
 
-import atexit
-import click
-import datetime
+# import atexit
+# import click
+# import datetime
 import json
 import logging
 import os
-import pyperclip
-import re
-import requests
-import sys
+# import pyperclip
+# import re
+# import requests
+# import sys
 import yaml
-import anthropic
+# import anthropic
 
 from pathlib import Path
-from prompt_toolkit import PromptSession, HTML
-from prompt_toolkit.history import FileHistory
-from rich.console import Console
-from rich.logging import RichHandler
-from rich.markdown import Markdown
+# from prompt_toolkit import PromptSession, HTML
+# from prompt_toolkit.history import FileHistory
+# from rich.console import Console
+# from rich.logging import RichHandler
+# from rich.markdown import Markdown
 from typing import Optional, List
-from xdg_base_dirs import xdg_config_home
+# from xdg_base_dirs import xdg_config_home
 
 import constants
 
-def load_config(logger: logging.Logger, config_file: str) -> dict:
+def load_config(logger: logging.Logger, config_file: str) -> dict: # type: ignore
     """
     Read a YAML config file and return its content as a dictionary.
 
@@ -65,7 +65,7 @@ def load_config(logger: logging.Logger, config_file: str) -> dict:
     if not Path(config_file).exists():
         os.makedirs(os.path.dirname(config_file), exist_ok=True)
         with open(config_file, "w", encoding="utf-8") as file:
-            yaml.dump(constants.DEFAULT_CONFIG, file, default_flow_style=False)
+            yaml.dump(constants.DEFAULT_CONFIG, file, default_flow_style=False) # type: ignore
         logger.info(f"New config file initialized: [green bold]{config_file}")
 
     # Load existing config
@@ -73,14 +73,14 @@ def load_config(logger: logging.Logger, config_file: str) -> dict:
         config = yaml.load(file, Loader=yaml.FullLoader)
 
     # Update the loaded config with any default values that are missing
-    for key, value in constants.DEFAULT_CONFIG.items():
+    for key, value in constants.DEFAULT_CONFIG.items(): # type: ignore
         if key not in config:
             config[key] = value
 
     return config
 
 
-def load_history_data(history_file: str) -> dict:
+def load_history_data(history_file: str) -> dict: # type: ignore
     """
     Read a session history JSON file and return its content.
 
@@ -106,7 +106,7 @@ def load_history_data(history_file: str) -> dict:
     return content
 
 
-def get_last_save_file() -> str:
+def get_last_save_file() -> Optional[str]:
     """
     Return the timestamp of the last saved session.
 
@@ -123,14 +123,15 @@ def get_last_save_file() -> str:
         None
 
     Returns:
-        str: The timestamp of the last saved session, or None if no session files exist.
-        Guarantees: The returned string will be a valid timestamp or None.
+        Optional[str]: The timestamp of the last saved session, or None if no session files exist.
+        Guarantees: The returned value will be a valid timestamp string or None.
     """
-    files = [f for f in os.listdir(constants.SAVE_FOLDER) if f.endswith(".json")]
+    files: list[str] = [f for f in os.listdir(str(constants.SAVE_FOLDER: Path)) if f.endswith(".json")] # type: ignore
+
     if files:
-        ts = [f.replace("chatgpt-session-", "").replace(".json", "") for f in files]
-        ts.sort()
-        return ts[-1]
+        ts = [f.replace("claudecli-session-", "").replace(".json", "") for f in files]                  # type: ignore
+        ts.sort()                                                                                       # type: ignore
+        return ts[-1]                                                                                   # type: ignore
     return None
 
 
@@ -173,7 +174,7 @@ def load_codebase(logger: logging.Logger, base_path: str, extensions: List[str])
     encodings = ['utf-8', 'cp1252', 'iso-8859-1']
 
     # Walk through the directory and subdirectories
-    for root, dirs, files in os.walk(base_path):
+    for root, _, files in os.walk(base_path):
         for file_name in files:
             if any(file_name.endswith(f".{ext}") for ext in extensions) or not(any(extensions)):
                 matched_files_found = True

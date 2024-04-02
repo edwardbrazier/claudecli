@@ -30,7 +30,7 @@ from typing import Optional
 # import load
 # import printing
 import save
-from parseaicode import process_assistant_response, ResponseContent, FileData
+from parseaicode import process_assistant_response, ResponseContent #, FileData
 
 logger = logging.getLogger("rich")
 
@@ -45,7 +45,7 @@ logging.basicConfig(
 
 # Initialize the messages history list
 # It's mandatory to pass it at each API call in order to have a conversation
-messages = []
+messages = [] # type: ignore
 # Initialize the console
 console = Console()
 
@@ -58,11 +58,11 @@ console = Console()
 
 def start_prompt(
     initial_context: str,
-    session: PromptSession,
-    config: dict,
-    copyable_blocks: Optional[dict],
-    proxy: dict | None,
-    output_dir: str,
+    session: PromptSession[str],
+    config: dict,                       # type: ignore
+    copyable_blocks: Optional[dict],    # type: ignore
+    proxy: Optional[dict],              # type: ignore
+    output_dir: Optional[str],
     force_overwrite: bool
 ) -> None:
     """
@@ -104,7 +104,7 @@ def start_prompt(
         message = sys.stdin.read()
     else:
         message = session.prompt(
-            HTML(f"<b>[{len(messages)}] >>> </b>")
+            HTML(f"<b>[{len(messages)}] >>> </b>") # type: ignore
         )
 
     if message.lower().strip() == "/q":
@@ -118,11 +118,11 @@ def start_prompt(
         match = re.search(r"^/c(?:opy)?\s*(\d+)", message.lower())
         if match:
             block_id = int(match.group(1))
-            if block_id in copyable_blocks:
+            if block_id in copyable_blocks: # type: ignore
                 try:
-                    pyperclip.copy(copyable_blocks[block_id])
+                    pyperclip.copy(copyable_blocks[block_id]) # type: ignore
                     logger.info(f"Copied block {block_id} to clipboard")
-                except pyperclip.PyperclipException:
+                except pyperclip.PyperclipException: # type: ignore
                     logger.error(
                         "Unable to perform the copy operation. Check https://pyperclip.readthedocs.io/en/latest/#not-implemented-error"
                     )
@@ -132,7 +132,7 @@ def start_prompt(
                     extra={"highlighter": None},
                 )
         elif messages:
-            pyperclip.copy(messages[-1]["content"])
+            pyperclip.copy(messages[-1]["content"]) # type: ignore
             logger.info(f"Copied previous response to clipboard")
         raise KeyboardInterrupt
 
@@ -146,24 +146,24 @@ def start_prompt(
     else:
         write_output = False
 
-    messages.append({"role": "user", "content": initial_context + message})
+    messages.append({"role": "user", "content": initial_context + message}) # type: ignore
 
     if write_output:
         # Provide a partial assistant message to the model
-        messages.append({"role": "assistant", "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"})
+        messages.append({"role": "assistant", "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"}) # type: ignore
 
-    api_key = config["anthropic_api_key"]
-    model = config["anthropic_model"]
-    base_endpoint = config["anthropic_api_url"]
+    api_key: str = config["anthropic_api_key"]  # type: ignore
+    model: str = config["anthropic_model"]      # type: ignore
+    # base_endpoint: str = config["anthropic_api_url"]
     
-    client = anthropic.Anthropic(api_key=api_key)
+    client = anthropic.Anthropic(api_key=api_key) # type: ignore
 
     try:
         response = client.messages.create(
-            model=model,
+            model=model,        # type: ignore
             max_tokens=4000,
             temperature=0.0,
-            messages=messages,
+            messages=messages,  # type: ignore
         )
     except requests.ConnectionError:
         logger.error(
@@ -180,14 +180,14 @@ def start_prompt(
 
     content = response.content
 
-    concatenated_output = ""
+    concatenated_output: str = ""
 
     for element in content:
         if element.type == "text":
             t = element.text
             print(t, end='')
             concatenated_output += t
-            messages.append({"role": "assistant", "content": t})
+            messages.append({"role": "assistant", "content": t}) # type: ignore
             
             if not config["non_interactive"]:
                 console.line()
@@ -196,7 +196,7 @@ def start_prompt(
 
     if write_output:
         try:
-            response_content = ResponseContent(
+            response_content = ResponseContent(                 
                 content_string=concatenated_output,
                 file_data_list=process_assistant_response(concatenated_output)
             )
@@ -204,8 +204,13 @@ def start_prompt(
             if response_content is None:
                 console.print("[bold red]Failed to get a response from the AI.[/bold red]")
             else:
+                if output_dir is not None:
+                    output_dir_notnone: str = output_dir
+                else:
+                    output_dir_notnone: str = os.getcwd()
+
                 # Write concatenated output to an xml file in output_dir
-                concat_file_path = os.path.join(output_dir, "concatenated_output.txt")
+                concat_file_path = os.path.join(output_dir_notnone, "concatenated_output.txt")
 
                 console.print(f"\n[bold green]Writing complete AI output to {concat_file_path}[/bold green]")
 

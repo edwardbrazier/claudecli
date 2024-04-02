@@ -4,27 +4,27 @@ It allows users to provide context from local files or directories, set various 
 and engage in a conversational session with the model.
 """
 
-import atexit
+# import atexit
 import click
-import datetime
-import json
-import logging
+# import datetime
+# import json
+# import logging
 import os
-import pyperclip
-import re
-import requests
+# import pyperclip
+# import re
+# import requests
 import sys
-import yaml
-import anthropic
+# import yaml
+# import anthropic
 
-from pathlib import Path
-from prompt_toolkit import PromptSession, HTML
+# from pathlib import Path
+from prompt_toolkit import PromptSession #, HTML
 from prompt_toolkit.history import FileHistory
-from rich.console import Console
-from rich.logging import RichHandler
-from rich.markdown import Markdown
+# from rich.console import Console
+# from rich.logging import RichHandler
+# from rich.markdown import Markdown
 from typing import Optional, List
-from xdg_base_dirs import xdg_config_home
+# from xdg_base_dirs import xdg_config_home
 
 import pure
 from interact import *
@@ -40,14 +40,15 @@ import load
     help="Pass an entire codebase to the model as context, from the specified location. "
          "Repeat this option and its argument any number of times.",
     multiple=True,
+    required=False
 )
 @click.option(
     "-e", 
     "--file-extensions", 
     "file_extensions",
-    required=False,
     help="File name extensions of files to look at in the codebase, separated by commas without spaces, e.g. py,txt,md "
-         "Only use this option once, even for multiple codebases."
+         "Only use this option once, even for multiple codebases.",
+    required=False
 )
 @click.option(
     "-c",
@@ -56,17 +57,36 @@ import load
     type=click.File("r"),
     help="Path to a context file",
     multiple=True,
+    required=False
 )
-@click.option("-k", "--key", "api_key", help="Set the API Key")
-@click.option("-m", "--model", "model", help="Set the model")
 @click.option(
-    "-ml", "--multiline", "multiline", is_flag=True, help="Use the multiline input mode"
+    "-k", 
+    "--key", 
+    "api_key", 
+    help="Set the API Key",
+    required=False
+)
+@click.option(
+    "-m", 
+    "--model", 
+    "model", 
+    help="Set the model",
+    required=False
+)
+@click.option(
+    "-ml", 
+    "--multiline", 
+    "multiline", 
+    is_flag=True, 
+    help="Use the multiline input mode",
+    required=False
 )
 @click.option(
     "-r",
     "--restore",
     "restore",
     help="Restore a previous chat session (input format: YYYYMMDD-hhmmss or 'last')",
+    required=False
 )
 @click.option(
     "-n",
@@ -74,27 +94,45 @@ import load
     "non_interactive",
     is_flag=True,
     help="Non interactive/command mode for piping",
+    required=False
 )
 @click.option(
-    "-j", "--json", "json_mode", is_flag=True, help="Activate json response mode"
+    "-j", 
+    "--json", 
+    "json_mode", 
+    is_flag=True, 
+    help="Activate json response mode",
+    required=False
 )
 @click.option(
     "-o",
     "--output-dir",
     "output_dir",
     type=click.Path(exists=True),
-    help="The output directory for generated files when using the /o command.",
+    help="The output directory for generated files when using the /o command. "
+        "Defaults to the current working directory.",
+    required=False
 )
 @click.option(
     "-f",
     "--force",
     "force",
     is_flag=True,
-    help="Force overwrite of output files if they already exist."
+    help="Force overwrite of output files if they already exist.",
+    required=False
 )
 def main(
-    sources, context, api_key, model, multiline, restore, non_interactive, json_mode,
-    file_extensions, output_dir, force
+    sources: List[str], 
+    context: List[click.File], 
+    api_key: Optional[str], 
+    model: Optional[str], 
+    multiline: bool, 
+    restore: Optional[str], 
+    non_interactive: bool, 
+    json_mode: bool,
+    file_extensions: Optional[str], 
+    output_dir: Optional[str], 
+    force: bool
 ) -> None:
     """
     Main entry point for the CLI.
@@ -136,15 +174,15 @@ def main(
 
     logger.info("[bold]Claude CLI", extra={"highlighter": None})
 
-    history = FileHistory(constants.HISTORY_FILE)
+    history = FileHistory(str(constants.HISTORY_FILE))
 
     if multiline:
-        session = PromptSession(history=history, multiline=True)
+        session: PromptSession[str] = PromptSession(history=history, multiline=True)
     else:
-        session = PromptSession(history=history)
+        session: PromptSession[str] = PromptSession(history=history)
 
     try:
-        config = load.load_config(logger=logger, config_file=constants.CONFIG_FILE)
+        config = load.load_config(logger=logger, config_file=str(constants.CONFIG_FILE)) # type: ignore
     except FileNotFoundError:
         logger.error(
             "[red bold]Configuration file not found", extra={"highlighter": None}
@@ -154,10 +192,10 @@ def main(
     save.create_save_folder()
 
     # Check proxy setting
-    if config["use_proxy"]:
-        proxy = {"http": config["proxy"], "https": config["proxy"]}
-    else:
-        proxy = None
+    # if config["use_proxy"]:
+    #     proxy = {"http": config["proxy"], "https": config["proxy"]}
+    # else:
+    #     proxy = None
 
     # Order of precedence for API Key configuration:
     # Command line option > Environment variable > Configuration file
@@ -170,9 +208,11 @@ def main(
     if api_key:
         config["anthropic_api_key"] = api_key.strip()
 
-    # If the --model command line argument is used, overwrite the configuration
-    if model:
-        config["anthropic_model"] = model.strip()
+    model_mapping: dict[str,str] = {
+        "opus": constants.opus,
+        "sonnet": constants.sonnet,
+        "haiku": constants.haiku
+    }
 
     config["non_interactive"] = non_interactive
 
@@ -182,9 +222,22 @@ def main(
 
     config["json_mode"] = json_mode
 
-    copyable_blocks = {} if config["easy_copy"] else None
+    copyable_blocks = {} if config["easy_copy"] else None # type: ignore
 
-    model = config["anthropic_model"]
+    # If the config specifies a model and the command line parameters do not specify a model, then
+    # use the one from the config file.
+    if model:
+        # First check whether the provided model is valid
+        if model not in model_mapping:
+            logger.error(
+                f"[red bold]Invalid model: {model}", extra={"highlighter": None}
+            )
+            sys.exit(1)
+        else:
+            model_notnone: str = model_mapping.get(model.lower(), model)
+            config["anthropic_model"] = model_notnone
+    elif "anthropic_model" not in config:
+        config["anthropic_model"] = constants.haiku
 
     # Run the display expense function when exiting the script
 #    atexit.register(print.display_expense, logger=logger, model=model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
@@ -194,13 +247,14 @@ def main(
     logger.info(
         f"Supplier: [green bold]{config['supplier']}", extra={"highlighter": None}
     )
-    logger.info(f"Model in use: [green bold]{model}", extra={"highlighter": None})
+    logger.info(f"Model in use: [green bold]{config['anthropic_model']}", extra={"highlighter": None})
 
     # Add the system message for code blocks in case markdown is enabled in the config file
     # if config["markdown"]:
         # add_markdown_system_message()
 
     initial_context = ""
+    codebase: str = ""
 
     # Source code location from command line option
     if sources:
@@ -215,7 +269,7 @@ def main(
 
             extensions = []
 
-            if file_extensions != ():
+            if file_extensions is not None and file_extensions != "":
                 logger.info(
                     f"Looking only at source files with extensions: [green bold]{file_extensions}\n",
                     extra={"highlighter": None},
@@ -223,7 +277,7 @@ def main(
                 extensions = [ext.strip() for ext in file_extensions.split(",")]
 
             try:
-                codebase = load.load_codebase(logger, source, extensions)
+                codebase: str = load.load_codebase(logger, source, extensions)
                 initial_context += codebase
                 
                 # Show the user how big the entire codebase is, in kb. 
@@ -253,11 +307,10 @@ def main(
 
             # If this feature is used --context is cleared
             messages.clear()
-            history_data = load.load_history_data(os.path.join(constants.SAVE_FOLDER, restore_file))
-            for message in history_data["messages"]:
-                messages.append(message)
-            prompt_tokens += history_data["prompt_tokens"]
-            completion_tokens += history_data["completion_tokens"]
+            history_data = load.load_history_data(os.path.join(constants.SAVE_FOLDER, restore_file)) # type: ignore
+            for message in history_data["messages"]: #  type: ignore
+                messages.append(message) # type: ignore
+
             logger.info(
                 f"Restored session: [bold green]{restore}",
                 extra={"highlighter": None},
@@ -278,7 +331,7 @@ def main(
 
     while True:
         try:
-            start_prompt(initial_context, session, config, copyable_blocks, proxy, output_dir, force)
+            start_prompt(initial_context, session, config, copyable_blocks, None, output_dir, force)
         except KeyboardInterrupt:
             continue
         except EOFError:
