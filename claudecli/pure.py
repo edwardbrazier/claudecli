@@ -2,67 +2,45 @@
 Utility functions for working with strings, files, and calculating expenses.
 """
 
-import atexit
-import click
-import datetime
-import json
-import logging
-import os
-import pyperclip
-import re
-import requests
-import sys
-import yaml
-import anthropic
+# def calculate_expense(
+#     prompt_tokens: int,
+#     completion_tokens: int,
+#     prompt_pricing: float,
+#     completion_pricing: float,
+# ) -> float:
+#     """
+#     Calculate the expense for a given number of tokens and pricing rates.
 
-from pathlib import Path
-from prompt_toolkit import PromptSession, HTML
-from prompt_toolkit.history import FileHistory
-from rich.console import Console
-from rich.logging import RichHandler
-from rich.markdown import Markdown
-from typing import Optional, List
-from xdg_base_dirs import xdg_config_home
+#     Args:
+#         prompt_tokens (int): The number of tokens in the prompt.
+#         completion_tokens (int): The number of tokens in the completion.
+#         prompt_pricing (float): The pricing rate for prompt tokens.
+#         completion_pricing (float): The pricing rate for completion tokens.
 
-def calculate_expense(
-    prompt_tokens: int,
-    completion_tokens: int,
-    prompt_pricing: float,
-    completion_pricing: float,
-) -> float:
-    """
-    Calculate the expense for a given number of tokens and pricing rates.
+#     Preconditions:
+#         - prompt_tokens >= 0
+#         - completion_tokens >= 0
+#         - prompt_pricing >= 0
+#         - completion_pricing >= 0
 
-    Args:
-        prompt_tokens (int): The number of tokens in the prompt.
-        completion_tokens (int): The number of tokens in the completion.
-        prompt_pricing (float): The pricing rate for prompt tokens.
-        completion_pricing (float): The pricing rate for completion tokens.
+#     Side effects:
+#         None
 
-    Preconditions:
-        - prompt_tokens >= 0
-        - completion_tokens >= 0
-        - prompt_pricing >= 0
-        - completion_pricing >= 0
+#     Exceptions:
+#         None
 
-    Side effects:
-        None
+#     Returns:
+#         float: The calculated expense, rounded to 6 decimal places.
+#         guarantees: The returned value will be non-negative.
+#     """
+#     expense = ((prompt_tokens / 1000) * prompt_pricing) + (
+#         (completion_tokens / 1000) * completion_pricing
+#     )
 
-    Exceptions:
-        None
+#     # Format to display in decimal notation rounded to 6 decimals
+#     expense = "{:.6f}".format(round(expense, 6))
 
-    Returns:
-        float: The calculated expense, rounded to 6 decimal places.
-        guarantees: The returned value will be non-negative.
-    """
-    expense = ((prompt_tokens / 1000) * prompt_pricing) + (
-        (completion_tokens / 1000) * completion_pricing
-    )
-
-    # Format to display in decimal notation rounded to 6 decimals
-    expense = "{:.6f}".format(round(expense, 6))
-
-    return expense
+#     return expense
 
 
 def get_size(contents: str) -> str:

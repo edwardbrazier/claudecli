@@ -5,6 +5,7 @@ and engage in a conversational session with the model.
 """
 
 # import atexit
+from anthropic import Client
 import click
 # import datetime
 # import json
@@ -19,13 +20,14 @@ import sys
 
 # from pathlib import Path
 from prompt_toolkit import PromptSession #, HTML
-from prompt_toolkit.history import FileHistory
+# from prompt_toolkit.history import FileHistory
 # from rich.console import Console
 # from rich.logging import RichHandler
 # from rich.markdown import Markdown
 from typing import Optional, List
 # from xdg_base_dirs import xdg_config_home
 
+from ai_functions import setup_client
 import pure
 from interact import *
 import constants
@@ -53,17 +55,10 @@ import load
 @click.option(
     "-c",
     "--context",
-    "context",
+    "context_files",
     type=click.File("r"),
     help="Path to a context file",
     multiple=True,
-    required=False
-)
-@click.option(
-    "-k", 
-    "--key", 
-    "api_key", 
-    help="Set the API Key",
     required=False
 )
 @click.option(
@@ -123,8 +118,7 @@ import load
 )
 def main(
     sources: List[str], 
-    context: List[click.File], 
-    api_key: Optional[str], 
+    context_files: List[click.File], 
     model: Optional[str], 
     multiline: bool, 
     restore: Optional[str], 
@@ -174,12 +168,12 @@ def main(
 
     logger.info("[bold]Claude CLI", extra={"highlighter": None})
 
-    history = FileHistory(str(constants.HISTORY_FILE))
+    # history = FileHistory(str(constants.HISTORY_FILE))
 
     if multiline:
-        session: PromptSession[str] = PromptSession(history=history, multiline=True)
+        session: PromptSession[str] = PromptSession(multiline=True)
     else:
-        session: PromptSession[str] = PromptSession(history=history)
+        session: PromptSession[str] = PromptSession()
 
     try:
         config = load.load_config(logger=logger, config_file=str(constants.CONFIG_FILE)) # type: ignore
@@ -189,7 +183,7 @@ def main(
         )
         sys.exit(1)
 
-    save.create_save_folder()
+    # save.create_save_folder()
 
     # Check proxy setting
     # if config["use_proxy"]:
@@ -199,14 +193,10 @@ def main(
 
     # Order of precedence for API Key configuration:
     # Command line option > Environment variable > Configuration file
-
-    # If the environment variable is set, overwrite the configuration
-    if os.environ.get(constants.ENV_VAR_ANTHROPIC):
-        config["anthropic_api_key"] = os.environ[constants.ENV_VAR_ANTHROPIC].strip()
     
     # If the --key command line argument is used, overwrite the configuration
-    if api_key:
-        config["anthropic_api_key"] = api_key.strip()
+    # if api_key:
+        # config["anthropic_api_key"] = api_key.strip()
 
     model_mapping: dict[str,str] = {
         "opus": constants.opus,
@@ -222,7 +212,7 @@ def main(
 
     config["json_mode"] = json_mode
 
-    copyable_blocks = {} if config["easy_copy"] else None # type: ignore
+    # copyable_blocks = {} if config["easy_copy"] else None # type: ignore
 
     # If the config specifies a model and the command line parameters do not specify a model, then
     # use the one from the config file.
@@ -242,11 +232,11 @@ def main(
     # Run the display expense function when exiting the script
 #    atexit.register(print.display_expense, logger=logger, model=model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
 
-    config["supplier"] = "anthropic"
+    # config["supplier"] = "anthropic"
 
-    logger.info(
-        f"Supplier: [green bold]{config['supplier']}", extra={"highlighter": None}
-    )
+    # logger.info(
+        # f"Supplier: [green bold]{config['supplier']}", extra={"highlighter": None}
+    # )
     logger.info(f"Model in use: [green bold]{config['anthropic_model']}", extra={"highlighter": None})
 
     # Add the system message for code blocks in case markdown is enabled in the config file
@@ -288,8 +278,8 @@ def main(
                 print(f"Error reading codebase: {e}")
 
     # Context from the command line option
-    if context:
-        for c in context:
+    if context_files:
+        for c in context_files:
             logger.info(
                 f"Context file: [green bold]{c.name}", extra={"highlighter": None}
             )
@@ -300,13 +290,10 @@ def main(
     if restore:
         if restore == "last":
             last_session = load.get_last_save_file()
-            restore_file = f"chatgpt-session-{last_session}.json"
+            restore_file = f"claudecli-session-{last_session}.json"
         else:
-            restore_file = f"chatgpt-session-{restore}.json"
+            restore_file = f"claudecli-session-{restore}.json"
         try:
-
-            # If this feature is used --context is cleared
-            messages.clear()
             history_data = load.load_history_data(os.path.join(constants.SAVE_FOLDER, restore_file)) # type: ignore
             for message in history_data["messages"]: #  type: ignore
                 messages.append(message) # type: ignore
@@ -329,15 +316,36 @@ def main(
     if not non_interactive:
         console.rule()
 
+    conversation_history: Optional[ConversationHistory] = []
+
+    api_key: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
+
+    if api_key is None:
+        console.print("[bold red]Please set the ANTHROPIC_API_KEY environment variable.[/bold red]")
+        sys.exit(1)
+
+    client: Client = setup_client(api_key) # type: ignore
+
     while True:
-        try:
-            start_prompt(initial_context, session, config, copyable_blocks, None, output_dir, force)
-        except KeyboardInterrupt:
-            continue
-        except EOFError:
-            break
+        context: Optional[str] = \
+            initial_context if conversation_history == [] else None
 
-
+        prompt_outcome = \
+            prompt_user(client,
+                        context,
+                        conversation_history, 
+                        session, 
+                        config, 
+                        output_dir, 
+                        force
+                        )
+        if isinstance(prompt_outcome, UserPromptOutcome):
+            if prompt_outcome == UserPromptOutcome.CONTINUE:
+                continue
+            else:
+                break
+        else:
+            conversation_history = prompt_outcome
 
 if __name__ == "__main__":
     main()

@@ -126,7 +126,7 @@ def get_last_save_file() -> Optional[str]:
         Optional[str]: The timestamp of the last saved session, or None if no session files exist.
         Guarantees: The returned value will be a valid timestamp string or None.
     """
-    files: list[str] = [f for f in os.listdir(str(constants.SAVE_FOLDER: Path)) if f.endswith(".json")] # type: ignore
+    files: list[str] = [f for f in os.listdir(str(constants.SAVE_FOLDER)) if f.endswith(".json")] # type: ignore
 
     if files:
         ts = [f.replace("claudecli-session-", "").replace(".json", "") for f in files]                  # type: ignore

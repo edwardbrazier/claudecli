@@ -4,33 +4,20 @@ This script provides an interactive command-line interface for interacting with 
 It allows users to send prompts and receive responses from the AI model.
 """
 
-# import atexit
-# import click
-# import datetime
-# import json
+from enum import Enum
 import logging
 import os
-# import pyperclip
-import re
-import requests
 import sys
-# import yaml
+
 import anthropic
-
-# from pathlib import Path
-from prompt_toolkit import PromptSession, HTML
-# from prompt_toolkit.history import FileHistory
+from prompt_toolkit import HTML, PromptSession
 from rich.console import Console
+from typing import Optional, Union
 from rich.logging import RichHandler
-# from rich.markdown import Markdown
-from typing import Optional
-# from xdg_base_dirs import xdg_config_home
 
-# import constants
-# import load
-# import printing
 import save
-from parseaicode import process_assistant_response, ResponseContent #, FileData
+from ai_functions import gather_ai_responses
+from parseaicode import ResponseContent
 
 logger = logging.getLogger("rich")
 
@@ -38,33 +25,30 @@ logging.basicConfig(
     level="INFO",
     format="%(message)s",
     handlers=[
-        RichHandler(show_time=False, show_level=False, show_path=False, markup=True)
+        RichHandler(show_time=False, show_level=False, show_path=False, markup=True) # type: ignore
     ],
 )
 
-
-# Initialize the messages history list
-# It's mandatory to pass it at each API call in order to have a conversation
-messages = [] # type: ignore
 # Initialize the console
 console = Console()
 
-# def add_markdown_system_message() -> None:
-#     """
-#     Try to force Claude to always respond with well formatted code blocks and tables if markdown is enabled.
-#     """
-#     instruction = "Always use code blocks with the appropriate language tags. If asked for a table always format it using Markdown syntax."
-#     #messages.append({"role": "system", "content": instruction})
+ConversationHistory = list[dict[str,str]]
 
-def start_prompt(
-    initial_context: str,
+class UserPromptOutcome(Enum):
+    CONTINUE = 1
+    STOP = 0
+
+PromptOutcome = Union[ConversationHistory, UserPromptOutcome]
+
+def prompt_user(
+    client: anthropic.Client,
+    codebase_xml: Optional[str],
+    conversation_history: ConversationHistory,
     session: PromptSession[str],
     config: dict,                       # type: ignore
-    copyable_blocks: Optional[dict],    # type: ignore
-    proxy: Optional[dict],              # type: ignore
     output_dir: Optional[str],
     force_overwrite: bool
-) -> None:
+) -> PromptOutcome:
     """
     Ask the user for input, build the request and perform it.
 
@@ -80,6 +64,10 @@ def start_prompt(
     Preconditions:
         - The `messages` list is initialized and contains the conversation history.
         - The `console` object is initialized for logging and output.
+        - The conversation history does not contain more than one User message in a row
+            or more than one Assistant message in a row, and it ends with an Assistant message if 
+            it is not empty.
+        - If there is an initial_context, then ConversationHistory is empty.
 
     Side effects:
         - Modifies the `messages` list by appending new messages from the user and the AI model.
@@ -91,222 +79,98 @@ def start_prompt(
     Exceptions:
         - EOFError: Raised when the user enters "/q" to quit the program.
         - KeyboardInterrupt: Raised when the user enters an empty prompt or when certain errors occur during the API request.
-        - requests.ConnectionError: Raised when there is a connection error with the API server.
-        - requests.Timeout: Raised when the API request times out.
 
     Returns:
         None
     """
+    user_entry: str = ""
 
-    message = ""
+    context_data: str = ("Here is a codebase. Read it carefully, because I want you to work on it.\n\n" \
+                    "\n\nCodebase:\n" + codebase_xml + "\n\n") \
+                    if codebase_xml is not None \
+                    else ""
 
     if config["non_interactive"]:
-        message = sys.stdin.read()
+        user_entry = sys.stdin.read()
     else:
-        message = session.prompt(
-            HTML(f"<b>[{len(messages)}] >>> </b>") # type: ignore
+        user_entry = session.prompt(
+            HTML(f"<b> >>> </b>") 
         )
 
-    if message.lower().strip() == "/q":
-        # this is a bit strange to be raising exceptions for normal conditions
-        raise EOFError
-    if message.lower() == "":
-        raise KeyboardInterrupt
+    if user_entry.lower().strip() == "/q":
+        return UserPromptOutcome.STOP
+    if user_entry.lower() == "":
+        return UserPromptOutcome.CONTINUE
+    
+    # Default system prompt, but not suitable for generating code in xml.
+    system_prompt: str =    "You are a helpful AI assistant which answers questions about programming. " \
+                            "Use markdown formatting where appropriate."
 
-    if config["easy_copy"] and message.lower().startswith("/c"):
-        # Use regex to find digits after /c or /copy
-        match = re.search(r"^/c(?:opy)?\s*(\d+)", message.lower())
-        if match:
-            block_id = int(match.group(1))
-            if block_id in copyable_blocks: # type: ignore
-                try:
-                    pyperclip.copy(copyable_blocks[block_id]) # type: ignore
-                    logger.info(f"Copied block {block_id} to clipboard")
-                except pyperclip.PyperclipException: # type: ignore
-                    logger.error(
-                        "Unable to perform the copy operation. Check https://pyperclip.readthedocs.io/en/latest/#not-implemented-error"
-                    )
-            else:
-                logger.error(
-                    f"No code block with ID {block_id} available",
-                    extra={"highlighter": None},
-                )
-        elif messages:
-            pyperclip.copy(messages[-1]["content"]) # type: ignore
-            logger.info(f"Copied previous response to clipboard")
-        raise KeyboardInterrupt
-
-    if message.lower().startswith("/o"):
+    # There are two cases: 
+    # One is that the user wants the AI to talk to them.
+    # The other is that the user wants the AI to send code to some files.
+    if user_entry.lower().startswith("/o"):
         # Remove the "/o" from the message
-        message = message[2:].strip()
+        user_instruction = user_entry[2:].strip()
         write_output =  True
         
-        # Add instructions for escaping special characters in XML
-        message += "\nMake sure to escape characters correctly inside the XML!"
-    else:
+        # The Anthropic documentation says that Claude performs better when 
+        # the input data comes first and the instructions come last.
+        new_messages: list[dict[str,str]] = [
+            {
+                "role": "user",
+                # The following is still ok if context_data is empty,
+                # which should happen if it's not the first turn of 
+                # the conversation.
+                "content": context_data + user_instruction + \
+                                "\nMake sure to escape special characters correctly inside the XML!"
+            },
+            {
+                "role": "assistant",
+                "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            }
+        ]
+
+        # TODO: Will need to package up the system prompt into the Python executable and/or make it user-configurable.
+        with open("./claude-cli/claudecli/coder_system_prompt.txt", "r") as f:
+            system_prompt = f.read()
+
+    else: 
+        # User is conversing with AI, not asking for code sent to files.
+        user_prompt: str = user_entry
+        new_messages: list[dict[str,str]] = [ \
+            {
+                "role": "user", 
+                "content": context_data + user_prompt
+            }
+        ]
         write_output = False
 
-    messages.append({"role": "user", "content": initial_context + message}) # type: ignore
+    # concanenate the new messages to the existing ones
+    messages = conversation_history + new_messages
 
-    if write_output:
-        # Provide a partial assistant message to the model
-        messages.append({"role": "assistant", "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"}) # type: ignore
-
-    api_key: str = config["anthropic_api_key"]  # type: ignore
     model: str = config["anthropic_model"]      # type: ignore
-    # base_endpoint: str = config["anthropic_api_url"]
-    
-    client = anthropic.Anthropic(api_key=api_key) # type: ignore
 
-    try:
-        response = client.messages.create(
-            model=model,        # type: ignore
-            max_tokens=4000,
-            temperature=0.0,
-            messages=messages,  # type: ignore
-        )
-    except requests.ConnectionError:
-        logger.error(
-            "[red bold]Connection error, try again...", extra={"highlighter": None}
-        )
-        messages.pop()
-        raise KeyboardInterrupt
-    except requests.Timeout:
-        logger.error(
-            "[red bold]Connection timed out, try again...", extra={"highlighter": None}
-        )
-        messages.pop()
-        raise KeyboardInterrupt
+    response_content: Optional[ResponseContent] = gather_ai_responses(client, model, messages, system_prompt) # type: ignore
 
-    content = response.content
+    if response_content is None:
+        console.print("[bold red]Failed to get a response from the AI.[/bold red]")
+    else:
+        for element in response_content.content_string: # type: ignore
+            print(element, end='')                      # type: ignore
+        console.line()
 
-    concatenated_output: str = ""
-
-    for element in content:
-        if element.type == "text":
-            t = element.text
-            print(t, end='')
-            concatenated_output += t
-            messages.append({"role": "assistant", "content": t}) # type: ignore
-            
-            if not config["non_interactive"]:
-                console.line()
-        else:
-            print(element)
-
-    if write_output:
-        try:
-            response_content = ResponseContent(                 
-                content_string=concatenated_output,
-                file_data_list=process_assistant_response(concatenated_output)
-            )
-
-            if response_content is None:
-                console.print("[bold red]Failed to get a response from the AI.[/bold red]")
-            else:
+        if write_output:
+            try:
                 if output_dir is not None:
                     output_dir_notnone: str = output_dir
                 else:
                     output_dir_notnone: str = os.getcwd()
 
-                # Write concatenated output to an xml file in output_dir
-                concat_file_path = os.path.join(output_dir_notnone, "concatenated_output.txt")
+                save.save_ai_output(response_content, output_dir_notnone, force_overwrite) # type: ignore
 
-                console.print(f"\n[bold green]Writing complete AI output to {concat_file_path}[/bold green]")
+                console.print("[bold green]Done![/bold green]")
+            except Exception as e:
+                console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
 
-                with open(concat_file_path, "w") as f:
-                    f.write(response_content.content_string)
-                    f.close()
-
-                file_data_list = response_content.file_data_list
-
-                console.print("[bold green]Files included in the result:[/bold green]")
-
-                if len(file_data_list) == 0:
-                    console.print("Nil.")
-                else:
-                    for relative_path, _, changes in file_data_list:
-                        console.print(f"[bold magenta]- {relative_path}[/bold magenta]\n[bold green]Changes:[/bold green] {changes}\n")
-
-                    console.print("\n")
-
-                    save.write_files(output_dir, file_data_list, force_overwrite)    
-
-            console.print("[bold green]Done![/bold green]")
-        except Exception as e:
-            console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
-
-    # match response.status_code:
-    #     case 200:
-    #         response = r.json()
-
-    #         message_response = {"content": response["content"][0]["text"]}
-    #         usage_response = {"prompt_tokens": response["usage"]["input_tokens"], "completion_tokens": response["usage"]["output_tokens"]}
-
-    #         if not config["non_interactive"]:
-    #             console.line()
-    #         if config["markdown"]:
-    #             print.print_markdown(message_response["content"].strip(), copyable_blocks)
-    #         else:
-    #             print(message_response["content"].strip())
-    #         if not config["non_interactive"]:
-    #             console.line()
-
-    #         # Update message history and token counters
-    #         messages.append({"role": response["role"], "content": message_response["content"]})
-    #         prompt_tokens += usage_response["prompt_tokens"]
-    #         completion_tokens += usage_response["completion_tokens"]
-    #         save.save_history(model, messages, prompt_tokens, completion_tokens)
-
-    #         if config["non_interactive"]:
-    #             # In non-interactive mode there is no looping back for a second prompt, you're done.
-    #             raise EOFError
-
-    #     case 400:
-    #         response = r.json()
-    #         if "error" in response:
-    #             logger.error(
-    #                 f"[red bold]{response['error']}",
-    #                 extra={"highlighter": None},
-    #             )
-    #         logger.error("[red bold]Invalid request", extra={"highlighter": None})
-    #         raise EOFError
-
-    #     case 401:
-    #         logger.error("[red bold]Invalid API Key", extra={"highlighter": None})
-    #         raise EOFError
-
-    #     case 429:
-    #         logger.error(
-    #             "[red bold]Rate limit or maximum monthly limit exceeded",
-    #             extra={"highlighter": None},
-    #         )
-    #         messages.pop()
-    #         raise KeyboardInterrupt
-
-    #     case 500:
-    #         logger.error(
-    #             "[red bold]Internal server error",
-    #             extra={"highlighter": None},
-    #         )
-    #         messages.pop()
-    #         raise KeyboardInterrupt
-
-    #     case 502 | 503:
-    #         logger.error(
-    #             "[red bold]The server seems to be overloaded, try again",
-    #             extra={"highlighter": None},
-    #         )
-    #         messages.pop()
-    #         raise KeyboardInterrupt
-
-    #     case _:
-    #         logger.error(
-    #             f"[red bold]Unknown error, status code {r.status_code}",
-    #             extra={"highlighter": None},
-    #         )
-    #         logger.error(r.json(), extra={"highlighter": None})
-    #         raise EOFError
-
-
-
+    return messages

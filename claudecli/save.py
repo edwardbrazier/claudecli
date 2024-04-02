@@ -4,96 +4,72 @@ Improved comments and docstrings for the provided code.
 This module provides utility functions for managing conversation history with an AI model.
 """
 
-import atexit
-import click
-import datetime
-import json
-import logging
 import os
-import pyperclip
-import re
-import requests
-import sys
-import yaml
-import anthropic
 import xml.sax.saxutils
 
-from pathlib import Path
-from prompt_toolkit import PromptSession, HTML
-from prompt_toolkit.history import FileHistory
 from rich.console import Console
-from rich.logging import RichHandler
-from rich.markdown import Markdown
-from typing import Optional, List
-from xdg_base_dirs import xdg_config_home
 
-import constants
+from ai_functions import ResponseContent
+from parseaicode import FileData
 
 console = Console()
 
-def create_save_folder() -> None:
+def save_ai_output(
+        response_content: ResponseContent, 
+        output_dir: str, 
+        force_overwrite: bool) -> None:
     """
-    Create the session history folder if it doesn't exist.
-
-    Preconditions:
-        None
-
-    Side effects:
-        Creates a new directory at the path specified by constants.SAVE_FOLDER.
-
-    Exceptions:
-        OSError: If the directory cannot be created (e.g., due to permissions issues).
-
-    Returns:
-        None
-    """
-    if not os.path.exists(constants.SAVE_FOLDER):
-        os.mkdir(constants.SAVE_FOLDER)
-
-
-def save_history(
-    model: str, messages: list, prompt_tokens: int, completion_tokens: int
-) -> None:
-    """
-    Save the conversation history with the AI model in JSON format.
+    Save the AI's output to files.
 
     Args:
-        model (str): The name or identifier of the AI model used.
-        messages (list): A list of dictionaries representing the conversation messages.
-        prompt_tokens (int): The number of tokens in the prompt.
-        completion_tokens (int): The number of tokens in the model's response.
+        response_content (ResponseContent): The response content from the AI, including the concatenated output string and file data list.
+        output_dir (str): The output directory for generated files.
+        force_overwrite (bool): Whether to force overwrite of output files if they already exist.
 
     Preconditions:
-        - The constants.SAVE_FOLDER directory exists.
-        - The messages list contains valid dictionaries representing conversation messages.
-        - prompt_tokens and completion_tokens are non-negative integers.
+        - response_content is a valid ResponseContent object.
+        - output_dir is a valid directory path.
 
     Side effects:
-        Creates or overwrites a JSON file at the path specified by constants.SAVE_FILE.
+        - Writes the concatenated AI output to a file.
+        - Writes generated files to the output directory.
 
     Exceptions:
-        IOError: If the file cannot be written (e.g., due to permissions issues).
-        TypeError: If any of the arguments have an invalid type.
+        None.
 
     Returns:
         None
     """
-    with open(os.path.join(constants.SAVE_FOLDER, constants.SAVE_FILE), "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "model": model,
-                "messages": messages,
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-            },
-            f,
-            indent=4,
-            ensure_ascii=False,
-        )
+    assert isinstance(response_content, ResponseContent), "response_content must be a ResponseContent object"
+    assert isinstance(output_dir, str), "output_dir must be a string"
+    assert isinstance(force_overwrite, bool), "force_overwrite must be a bool"
+
+    # Write concatenated output to an xml file in output_dir
+    concat_file_path = os.path.join(output_dir, "concatenated_output.txt")
+
+    console.print(f"\n[bold green]Writing complete AI output to {concat_file_path}[/bold green]")
+
+    with open(concat_file_path, "w") as f:
+        f.write(response_content.content_string)
+        f.close()
+
+    file_data_list: list[FileData] = response_content.file_data_list
+
+    console.print("[bold green]Files included in the result:[/bold green]")
+
+    if len(file_data_list) == 0:
+        console.print("Nil.")
+    else:
+        for relative_path, _, changes in file_data_list:
+            console.print(f"[bold magenta]- {relative_path}[/bold magenta]\n[bold green]Changes:[/bold green] {changes}\n")
+
+        console.print("\n")
+
+        write_files(output_dir, file_data_list, force_overwrite)    
 
 def write_files( \
         output_dir: str, \
-        file_data: list[tuple[str, str, str]], \
+        file_data: list[FileData], \
         force_overwrite: bool = False) \
         -> None:
     """
@@ -102,7 +78,7 @@ def write_files( \
 
     Args:
         output_dir (str): The directory to write the files to.
-        file_data (List[tuple[str, str, str]]): A list of tuples containing the file path, contents, and changes.
+        file_data (list[FileData]): A list of tuples containing the file path, contents, and changes.
         force_overwrite (bool): Whether to force overwriting existing files.
 
     Preconditions:
