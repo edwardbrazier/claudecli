@@ -6,7 +6,7 @@ It allows users to send prompts and receive responses from the AI model.
 
 from enum import Enum
 import logging
-import os
+# import os
 import sys
 
 import anthropic
@@ -43,8 +43,10 @@ def prompt_user(
     conversation_history: ConversationHistory,
     session: PromptSession[str],
     config: dict,                       # type: ignore
-    output_dir: Optional[str],
-    force_overwrite: bool
+    output_dir_notnone: str,
+    force_overwrite: bool,
+    system_prompt_code: str,
+    system_prompt_general: str
 ) -> PromptOutcome:
     """
     Ask the user for input, build the request and perform it.
@@ -57,6 +59,8 @@ def prompt_user(
         config (dict): The configuration dictionary containing settings for the API request.
         output_dir (Optional[str]): The output directory for generated files when using the /o command.
         force_overwrite (bool): Whether to force overwrite of output files if they already exist.
+        system_prompt_code (str): The system prompt to use for code generation.
+        system_prompt_general (str): The system prompt to use for general conversation.
 
     Preconditions:
         - The `conversation_history` list is initialized and contains the conversation history.
@@ -83,15 +87,15 @@ def prompt_user(
     if codebase_xml is not None:
         context_data: str = "Here is a codebase. Read it carefully, because I want you to work on it.\n\n" \
                             "\n\nCodebase:\n" + codebase_xml + "\n\n"
+        
+        # Write codebase to codebase.xml in the cwd.
+        # with open("context.xml", "w") as f:
+        #     f.write(context_data)
+        #     f.close()
     else:
         context_data: str = ""
 
     model: str = config["anthropic_model"]      # type: ignore
-
-    if output_dir is not None:
-        output_dir_notnone: str = output_dir
-    else:
-        output_dir_notnone: str = os.getcwd()
 
     if config["non_interactive"]:
         user_entry = sys.stdin.read()
@@ -104,11 +108,6 @@ def prompt_user(
         return UserPromptOutcome.STOP
     if user_entry.lower() == "":
         return UserPromptOutcome.CONTINUE
-    
-    # Default system prompt, but not suitable for generating code in xml.
-    system_prompt_general: str =    "You are a helpful AI assistant which answers questions about programming. " \
-                                    "Always use code blocks with the appropriate language tags. " \
-                                    "If asked for a table, always format it using Markdown syntax."
 
     # There are two cases: 
     # One is that the user wants the AI to talk to them.
@@ -134,10 +133,6 @@ def prompt_user(
             }
         ]
 
-        # TODO: Will need to package up the system prompt into the Python executable and/or make it user-configurable.
-        with open("./claudecli/coder_system_prompt.txt", "r") as f:
-            system_prompt_code = f.read()
-
         messages = conversation_history + new_messages
         response_content: Optional[ResponseContent] = gather_ai_code_responses(client, model, messages, system_prompt_code) # type: ignore
 
@@ -145,9 +140,10 @@ def prompt_user(
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")
             return UserPromptOutcome.CONTINUE
         else:
-            for element in response_content.content_string: # type: ignore
-                console.print(element, end='')                      # type: ignore
-            console.line()
+            # for _ in response_content.content_string: # type: ignore
+            # console.print("Received some code from the AI.")
+                # console.print(element, end='')                      # type: ignore
+            # console.line()
 
             try:
                 save.save_ai_output(response_content, output_dir_notnone, force_overwrite) # type: ignore

@@ -23,7 +23,7 @@ It should be escaped like this in the XML output:
 It is crucial that you escape these special characters correctly to ensure the XML output is valid and can be parsed properly.
 If you fail to escape the special characters, then the program will fail entirely (due to a parsing error) and your output will not be useful.
 
-For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. The comment must be formatted in a way that will be recognized in that programming language as a comment.
+For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. But you must always include prior context. The comment must be formatted in a way that will be recognised in that programming language as a comment.
 
 You don't need to close the tags before you reach your output token limit. I will ask you for a continuation of your response in the next message.
 
@@ -308,3 +308,88 @@ This ensures that the program can continue to run even if there are issues parsi
   </file>
 </code>
 </good>
+
+More examples of correct behaviour:
+
+<examples>
+<example>
+<codebase>
+<codebase_subfolder>
+<file>
+<path>src/utils.ts</path>
+<content>export function greet(name: string): string {
+  return `Hello, ${name}!`;
+}</content>
+</file>
+<file>
+<path>src/index.ts</path>
+<content>import { greet } from './utils';
+
+console.log(greet('World'));</content>
+</file>
+</codebase_subfolder>
+</codebase>
+
+<user>Please modify the greet function in utils.ts to take an optional age parameter and include it in the greeting.</user>
+
+<assistant><?xml version="1.0" encoding="UTF-8"?>
+<code>
+  <file>
+    <path>src/utils.ts</path>
+    <content>export function greet(name: string, age?: number): string {
+  if (age) {
+    return &#96;Hello, ${name}! You are ${age} years old.&#96;;
+  } else {
+    return &#96;Hello, ${name}!&#96;;
+  }
+}</content>
+    <changes>
+Modified the greet function to accept an optional age parameter and include it in the greeting if provided.
+    </changes>
+  </file>
+</code></assistant>
+</example>
+
+
+
+
+
+<example>
+<codebase>
+<codebase_subfolder>
+<file>
+<path>src/math.ts</path>
+<content>export function add(a: number, b: number): number {
+  return a + b;
+}</content>
+</file>
+<file>
+<path>src/main.ts</path>
+<content>import { add } from './math';
+
+const result = add(2, 3);
+console.log(`2 + 3 = ${result}`);</content>
+</file>
+</codebase_subfolder>
+</codebase>
+
+<user>Please create a new function in math.ts called multiply that takes two numbers and returns their product.</user>
+
+<assistant><?xml version="1.0" encoding="UTF-8"?>
+<code>
+  <file>
+    <path>src/math.ts</path>
+    <content>export function add(a: number, b: number): number {
+  return a + b;
+}
+
+export function multiply(a: number, b: number): number {
+  return a * b;
+}</content>
+    <changes>
+Added a new multiply function that takes two numbers and returns their product.
+    </changes>
+  </file>
+</code></assistant>
+</example>
+</examples>

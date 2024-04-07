@@ -90,7 +90,7 @@ def prompt_ai(
     else:
         content_block = content[0]
 
-        # Strip trailing whitespace from last mesage
+        # Strip trailing whitespace from last message
         # so that if we pass it back, Anthropic will accept it
         # as an assistant message.
         content_string: str = content_block.text # ["text"] # type: ignore
@@ -176,13 +176,13 @@ def gather_ai_code_responses(
         
             content_block = content[0]
 
-            # Strip trailing whitespace from last mesage
+            # Strip trailing whitespace from last message
             # so that if we pass it back, Anthropic will accept it
             # as an assistant message.
             content_string: str = content_block.text # ["text"] # type: ignore
 
             if content_string == "": 
-                print("Received an empty response string.")
+                console.print("Received an empty response string.")
                 return None
             
             responses.append(content_string) # type: ignore
@@ -191,7 +191,7 @@ def gather_ai_code_responses(
         finished = parse_result.finished
 
         if (finished or force_parse) and parse_result.file_data_list is None:
-            print("[bold yellow]Failed to parse AI responses.[/bold yellow]")
+            console.print("[bold yellow]Failed to parse AI responses.[/bold yellow]")
             return ResponseContent(
                 content_string=separator.join(responses),
                 file_data_list=[]

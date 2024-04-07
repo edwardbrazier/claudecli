@@ -240,7 +240,7 @@ def parse_ai_responses(responses: list[str], force_parse: bool) -> ParseResult:
     Parse a series of AI responses and combine the file data.
 
     Args:
-        responses (List[str]): The list of AI responses to parse.
+        responses (list[str]): The list of AI responses to parse.
         force_parse (bool): Parse even if stop signal not detected.
 
     Preconditions:

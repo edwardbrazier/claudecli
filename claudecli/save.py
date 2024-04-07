@@ -1,7 +1,13 @@
 """
-Improved comments and docstrings for the provided code.
+Utility functions for managing conversation history with an AI model.
 
-This module provides utility functions for managing conversation history with an AI model.
+This module provides functions to:
+1. Save the AI's output to files.
+2. Write file data to disk.
+
+Functions:
+    save_ai_output(response_content, output_dir, force_overwrite)
+    write_files(output_dir, file_data, force_overwrite)
 """
 
 import os
@@ -78,15 +84,16 @@ def write_files( \
 
     Args:
         output_dir (str): The directory to write the files to.
-        file_data (list[FileData]): A list of tuples containing the file path, contents, and changes.
+        file_data (list[FileData]): A list of FileData objects containing the file path, contents, and changes.
         force_overwrite (bool): Whether to force overwriting existing files.
 
     Preconditions:
-        - file_data is a list of tuples, where each tuple contains a valid file path, contents and changes.
+        - output_dir is a valid directory path.
+        - file_data is a list of valid FileData objects.
 
     Side effects:
         - Creates new files or overwrites existing files on disk.
-        - Creates new folders as required
+        - Creates new folders as required.
 
     Exceptions:
         None

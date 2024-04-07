@@ -5,7 +5,7 @@ and engage in a conversational session with the model.
 """
 
 # import atexit
-from anthropic import Client
+# from anthropic import Client
 import click
 # import datetime
 # import json
@@ -40,7 +40,8 @@ import load
     "sources",
     type=click.Path(exists=True),
     help="Pass an entire codebase to the model as context, from the specified location. "
-         "Repeat this option and its argument any number of times.",
+         "Repeat this option and its argument any number of times. "
+         "The codebase will only be loaded once. ",
     multiple=True,
     required=False
 )
@@ -52,20 +53,20 @@ import load
          "Only use this option once, even for multiple codebases.",
     required=False
 )
-@click.option(
-    "-c",
-    "--context",
-    "context_files",
-    type=click.File("r"),
-    help="Path to a context file",
-    multiple=True,
-    required=False
-)
+# @click.option(
+#     "-c",
+#     "--context",
+#     "context_files",
+#     type=click.File("r"),
+#     help="Path to a context file",
+#     multiple=True,
+#     required=False
+# )
 @click.option(
     "-m", 
     "--model", 
     "model", 
-    help="Set the model",
+    help="Set the model. In ascending order of capability, the options are: 'haiku', 'sonnet', 'opus'",
     required=False
 )
 @click.option(
@@ -73,32 +74,25 @@ import load
     "--multiline", 
     "multiline", 
     is_flag=True, 
-    help="Use the multiline input mode",
+    help="Use the multiline input mode. "
+         "To submit a multiline input in Bash on Windows, press Escape and then Enter.",
     required=False
 )
-@click.option(
-    "-r",
-    "--restore",
-    "restore",
-    help="Restore a previous chat session (input format: YYYYMMDD-hhmmss or 'last')",
-    required=False
-)
-@click.option(
-    "-n",
-    "--non-interactive",
-    "non_interactive",
-    is_flag=True,
-    help="Non interactive/command mode for piping",
-    required=False
-)
-@click.option(
-    "-j", 
-    "--json", 
-    "json_mode", 
-    is_flag=True, 
-    help="Activate json response mode",
-    required=False
-)
+# @click.option(
+#     "-r",
+#     "--restore",
+#     "restore",
+#     help="Restore a previous chat session (input format: YYYYMMDD-hhmmss or 'last')",
+#     required=False
+# )
+# @click.option(
+#     "-n",
+#     "--non-interactive",
+#     "non_interactive",
+#     is_flag=True,
+#     help="Non interactive/command mode for piping",
+#     required=False
+# )
 @click.option(
     "-o",
     "--output-dir",
@@ -116,57 +110,50 @@ import load
     help="Force overwrite of output files if they already exist.",
     required=False
 )
+@click.option(
+    "-csp",
+    "--coder-system-prompt",
+    "coder_system_prompt",
+    type=click.Path(exists=True),
+    help="Path to the file containing the Coder System Prompt. Defaults to '~/.claudecli_coder_system_prompt.txt'.",
+    required=False
+)
+@click.option(
+    "-gsp",
+    "--general-system-prompt",
+    "general_system_prompt",
+    type=click.Path(exists=True),
+    help="Path to the file containing the General System Prompt. Defaults to '~/.claudecli_general_system_prompt.txt'.",
+    required=False
+)
 def main(
     sources: List[str], 
-    context_files: List[click.File], 
+    # context_files: List[click.File], 
     model: Optional[str], 
     multiline: bool, 
-    restore: Optional[str], 
-    non_interactive: bool, 
-    json_mode: bool,
+    # restore: Optional[str], 
+    # non_interactive: bool, 
     file_extensions: Optional[str], 
     output_dir: Optional[str], 
-    force: bool
+    force: bool,
+    coder_system_prompt: Optional[str],
+    general_system_prompt: Optional[str]
 ) -> None:
     """
-    Main entry point for the CLI.
+    Command-line interface to the Anthropic Claude AI.
+    Supports chat conversations.
+    Also supports code output from Claude to multiple files at once.
 
-    Args:
-        sources (List[str]): Paths to directories containing source code to provide as context.
-        context (List[File]): Files containing additional context to provide.
-        api_key (str): API key to use for authentication.
-        model (str): Name of the AI model to use.
-        multiline (bool): Whether to enable multiline input mode.
-        restore (str): Identifier for a previous chat session to restore.
-        non_interactive (bool): Whether to run in non-interactive mode (for piping).
-        json_mode (bool): Whether to enable JSON response mode.
-        file_extensions (str): Comma-separated list of file extensions to consider in source directories.
-        output_dir (str): The output directory for generated files when using the /o command.
-        force (bool): Whether to force overwrite of output files if they already exist.
-
-    Preconditions:
-        - The provided source directories and context files must exist and be readable.
-        - The API key must be valid and have sufficient permissions.
-
-    Side effects:
-        - Prints output to the console.
-        - Saves chat history to disk.
-        - Copies output to the clipboard (if enabled).
-        - Writes generated files to the output directory when using the /o command.
-
-    Exceptions:
-        - FileNotFoundError: Raised if a provided source directory or context file does not exist.
-        - Other exceptions may be raised by external libraries or the AI model.
-
-    Returns:
-        None
+    Write '/q' to end the chat.
+    Write '/o <instructions>' to ask Claude for code, which the application will output to the selected output directory.
+    '<instructions>' represents your instructions to Claude.
     """
 
-    # If non interactive suppress the logging messages
-    if non_interactive:
-        console.print("[red bold]Error[/red bold]")
+    # If non interactive suppress the logging message
+    # if non_interactive:
+        # console.print("[red bold]Error[/red bold]")
 
-    console.print("[bold]Claude CLI[/bold]")
+    console.print("[bold]ClaudeCLI[/bold]")
 
     # history = FileHistory(str(constants.HISTORY_FILE))
 
@@ -202,13 +189,13 @@ def main(
         "haiku": constants.haiku
     }
 
-    config["non_interactive"] = non_interactive
+    config["non_interactive"] = False
 
     # Do not emit markdown in non-interactive mode, as ctrl character formatting interferes in several contexts including json output.
     if config["non_interactive"]:
         config["markdown"] = False
 
-    config["json_mode"] = json_mode
+    config["json_mode"] = False
 
     # copyable_blocks = {} if config["easy_copy"] else None # type: ignore
 
@@ -236,43 +223,82 @@ def main(
         # f"Supplier: [green bold]{config['supplier']}", extra={"highlighter": None}
     # )
     console.print(f"Model in use: [green bold]{config['anthropic_model']}[/green bold]")
+    console.line()
 
     # Add the system message for code blocks in case markdown is enabled in the config file
     # if config["markdown"]:
         # add_markdown_system_message()
 
-    initial_context: Optional[str] = None
-    codebase: str = ""
+    # initial_context: Optional[str] = None
+    codebase: Optional[load.Codebase] = None
+    extensions: list[str] = []
 
     # Source code location from command line option
-    if sources:
+    if sources:        
+        if file_extensions is not None and file_extensions != "":
+            console.print(
+                f"Looking only at source files with extensions: [green bold]{file_extensions}[/green bold]"
+            )
+            extensions = [ext.strip() for ext in file_extensions.split(",")]
+
         for source in sources:
             console.print(
-                f"Codebase location: [green bold]{source}[/green bold]\n"
-            )
-            console.print(
-                "The entire codebase will be prepended to your first message."
+                f"Codebase location: [green bold]{source}[/green bold]"
             )
 
             extensions = []
 
-            if file_extensions is not None and file_extensions != "":
-                console.print(
-                    f"Looking only at source files with extensions: [green bold]{file_extensions}[/green bold]\n"
-                )
-                extensions = [ext.strip() for ext in file_extensions.split(",")]
-
             try:
-                codebase += load.load_codebase(logger, source, extensions)
+                new_codebase = load.load_codebase(source, extensions)
+
+                if codebase is None:
+                    codebase = new_codebase
+                else:
+                    codebase += new_codebase
+
+                console.line()
             except FileNotFoundError as e:
                 console.print(f"Error reading codebase: {e}")
 
-        # Show the user how big the entire codebase is, in kb. 
-        console.print(
-            f"Codebase size: [green bold]{pure.get_size(codebase)}[/green bold]\n"
-        )
+        if codebase is None:
+            console.print(
+                "[red bold]Codebase could not be loaded. Please check the source code location and try again.[/red bold]")
+        else:
+            # TODO: move this bit to load.py
+            codebase.concatenated_contents = \
+                f"\n<codebase>\n{codebase.concatenated_contents}\n</codebase>\n"
 
-        initial_context = codebase
+            # Show the user how big the entire codebase is, in kb. 
+            console.print(
+                f"Codebase size: [green bold]{pure.get_size(codebase.concatenated_contents)}[/green bold]\n"
+            )
+
+
+        # initial_context = codebase.concatenated_contents
+
+    if coder_system_prompt is None:
+        coder_system_prompt = os.path.expanduser("~/.claudecli_coder_system_prompt.txt")
+    if general_system_prompt is None:  
+        general_system_prompt = os.path.expanduser("~/.claudecli_general_system_prompt.txt")
+
+    try:
+        with open(coder_system_prompt, "r") as f:
+            system_prompt_code = f.read()
+    except FileNotFoundError:
+        console.print("[bold yellow]Coder System Prompt file not found. Using empty prompt.[/bold yellow]")
+        system_prompt_code = ""
+
+    try:  
+        with open(general_system_prompt, "r") as f:
+            system_prompt_general = f.read()
+    except FileNotFoundError:
+        console.print("[bold yellow]General System Prompt file not found. Using default prompt.[/bold yellow]")
+
+        system_prompt_general =    "You are a helpful AI assistant which answers questions about programming. " \
+                                        "Always use code blocks with the appropriate language tags. " \
+                                        "If asked for a table, always format it using Markdown syntax."
+        console.print("[bold yellow]Default General System Prompt:[/bold yellow]")
+        console.print(system_prompt_general)
 
     # # Context from the command line option
     # if context_files:
@@ -284,33 +310,28 @@ def main(
     #         messages.append({"role": "user", "content": c.read().strip()})
 
     # Restore a previous session
-    if restore:
-        if restore == "last":
-            last_session = load.get_last_save_file()
-            restore_file = f"claudecli-session-{last_session}.json"
-        else:
-            restore_file = f"claudecli-session-{restore}.json"
-        try:
-            history_data = load.load_history_data(os.path.join(constants.SAVE_FOLDER, restore_file)) # type: ignore
-            for message in history_data["messages"]: #  type: ignore
-                messages.append(message) # type: ignore
+    # if restore:
+    #     if restore == "last":
+    #         last_session = load.get_last_save_file()
+    #         restore_file = f"claudecli-session-{last_session}.json"
+    #     else:
+    #         restore_file = f"claudecli-session-{restore}.json"
+    #     try:
+    #         history_data = load.load_history_data(os.path.join(constants.SAVE_FOLDER, restore_file)) # type: ignore
+    #         for message in history_data["messages"]: #  type: ignore
+    #             messages.append(message) # type: ignore
 
-            logger.info(
-                f"Restored session: [bold green]{restore}",
-                extra={"highlighter": None},
-            )
-        except FileNotFoundError:
-            logger.error(
-                f"[red bold]File {restore_file} not found", extra={"highlighter": None}
-            )
+    #         logger.info(
+    #             f"Restored session: [bold green]{restore}",
+    #             extra={"highlighter": None},
+    #         )
+    #     except FileNotFoundError:
+    #         logger.error(
+    #             f"[red bold]File {restore_file} not found", extra={"highlighter": None}
+    #         )
 
-    if json_mode:
-        console.print(
-            "JSON response mode is active. Your message should contain the [bold]'json'[/bold] word."
-        )
-
-    if not non_interactive:
-        console.rule()
+    # if not non_interactive:
+        # console.rule()
 
     conversation_history: Optional[ConversationHistory] = []
 
@@ -320,20 +341,34 @@ def main(
         console.print("[bold red]Please set the ANTHROPIC_API_KEY environment variable.[/bold red]")
         sys.exit(1)
 
+    if output_dir is not None:
+        output_dir_notnone: str = output_dir
+    else:
+        output_dir_notnone: str = os.getcwd()
+
+    console.line()
+    console.print(f"Output files will be written to: [bold green]{output_dir_notnone}[/bold green]\n")
+
     client: Client = setup_client(api_key) # type: ignore
 
     while True:
-        context: Optional[str] = \
-            initial_context if conversation_history == [] else None
+        context: Optional[str]
+
+        if codebase is not None and conversation_history == []:
+            context = codebase.concatenated_contents
+        else:
+            context = None
 
         prompt_outcome = \
-            prompt_user(client,
+            prompt_user(client, # type: ignore
                         context,
                         conversation_history, 
                         session, 
                         config, 
-                        output_dir, 
-                        force
+                        output_dir_notnone, 
+                        force,
+                        system_prompt_code,
+                        system_prompt_general
                         )
         if isinstance(prompt_outcome, UserPromptOutcome):
             if prompt_outcome == UserPromptOutcome.CONTINUE:

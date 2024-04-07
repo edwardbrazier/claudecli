@@ -38,6 +38,32 @@ from typing import Optional, List
 # from xdg_base_dirs import xdg_config_home
 
 import constants
+from printing import console
+
+class Codebase:
+    def __init__(self, concatenated_contents: str, file_paths: list[str]):
+        self.concatenated_contents = concatenated_contents
+        self.file_paths = file_paths
+
+    def __add__(self, other: 'Codebase') -> 'Codebase':
+        """
+        Overload the `+` operator to concatenate two `Codebase` objects.
+        Args:
+            other (Codebase): The other `Codebase` object to concatenate with.
+
+        Preconditions:
+            - `other` is a valid `Codebase` object.
+
+        Side effects:
+            None.
+        """
+        concatenated_contents = self.concatenated_contents + other.concatenated_contents
+        file_paths = self.file_paths + other.file_paths
+        return Codebase(concatenated_contents, file_paths)
+
+    def __str__(self) -> str:
+        # Include both the string and the file names.
+        return f"{self.concatenated_contents}\n\n---\n\n{self.file_paths}"
 
 def load_config(logger: logging.Logger, config_file: str) -> dict: # type: ignore
     """
@@ -136,7 +162,7 @@ def get_last_save_file() -> Optional[str]:
 
 
 
-def load_codebase(logger: logging.Logger, base_path: str, extensions: List[str]) -> str:
+def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     """
     Concatenate the contents of files in the given directory and its subdirectories
     that match the specified file extensions.
@@ -158,10 +184,9 @@ def load_codebase(logger: logging.Logger, base_path: str, extensions: List[str])
         FileNotFoundError: If no matching files are found.
 
     Returns:
-        str: A single string containing the concatenated contents of all matching files,
-             with headers indicating each file's path relative to base_path.
-        Guarantees: The returned string will contain the concatenated file contents,
-                    or an empty string if no matching files are found.
+        Codebase: A Codebase object containing the concatenated file contents and a list of loaded file paths.
+        guarantees: The returned Codebase object will contain the concatenated file contents and a list of file paths. 
+                    These may be empty.
     """
 
     # Verify the base path exists and is a directory
@@ -173,25 +198,39 @@ def load_codebase(logger: logging.Logger, base_path: str, extensions: List[str])
 
     encodings = ['utf-8', 'cp1252', 'iso-8859-1']
 
+    concatenated_contents += "<codebase_subfolder>\n"
+
+    codebase_files: list[str] = []
+
     # Walk through the directory and subdirectories
     for root, _, files in os.walk(base_path):
         for file_name in files:
             if any(file_name.endswith(f".{ext}") for ext in extensions) or not(any(extensions)):
                 matched_files_found = True
                 file_path = Path(root) / file_name
-                relative_path = file_path.relative_to(base_path)
+                # relative_path = file_path.relative_to(base_path)
 
-                if "__pycache__" not in str(relative_path):
-                    logger.info(f"Loading file: {file_path}")
+                if "__pycache__" not in str(file_path):
+                    console.print(f"Loading file: {file_path}")
+
                     for encoding in encodings:
                         try:
                             with open(file_path, 'r', encoding=encoding) as file:
                                 contents = file.read()
-                                concatenated_contents += f"### {relative_path} ###\n{contents}\n\n" 
+                                concatenated_contents += \
+                                    f"<file>\n" \
+                                    f"<path>{str(file_path)}</path>\n" \
+                                    f"<content>{contents}</content>\n" \
+                                    f"</file>\n"
+                                codebase_files.append(str(file_path))
+                                
+                                break
                         except Exception as e:
-                            logger.warning(f"Failed to open file {file_path} with encoding {encoding}: {e}")
+                            console.print(f"Failed to open file {file_path} with encoding {encoding}: {e}")
+
+    concatenated_contents += "</codebase_subfolder>\n"
 
     if not matched_files_found:
         raise FileNotFoundError("No matching files found.")
 
-    return concatenated_contents
+    return Codebase(concatenated_contents=concatenated_contents, file_paths=codebase_files)
