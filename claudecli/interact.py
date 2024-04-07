@@ -6,7 +6,6 @@ It allows users to send prompts and receive responses from the AI model.
 
 from enum import Enum
 import logging
-# import os
 import sys
 
 import anthropic
@@ -87,11 +86,6 @@ def prompt_user(
     if codebase_xml is not None:
         context_data: str = "Here is a codebase. Read it carefully, because I want you to work on it.\n\n" \
                             "\n\nCodebase:\n" + codebase_xml + "\n\n"
-        
-        # Write codebase to codebase.xml in the cwd.
-        # with open("context.xml", "w") as f:
-        #     f.write(context_data)
-        #     f.close()
     else:
         context_data: str = ""
 
@@ -140,11 +134,6 @@ def prompt_user(
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")
             return UserPromptOutcome.CONTINUE
         else:
-            # for _ in response_content.content_string: # type: ignore
-            # console.print("Received some code from the AI.")
-                # console.print(element, end='')                      # type: ignore
-            # console.line()
-
             try:
                 save.save_ai_output(response_content, output_dir_notnone, force_overwrite) # type: ignore
                 console.print("[bold green]Finished saving AI output.[/bold green]")
