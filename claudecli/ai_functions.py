@@ -93,7 +93,7 @@ def prompt_ai(
         # Strip trailing whitespace from last message
         # so that if we pass it back, Anthropic will accept it
         # as an assistant message.
-        content_string: str = content_block.text # ["text"] # type: ignore
+        content_string: str = content_block.text # type: ignore
 
         if content_string == "": 
             console.print("Received an empty response string.")
@@ -179,7 +179,7 @@ def gather_ai_code_responses(
             # Strip trailing whitespace from last message
             # so that if we pass it back, Anthropic will accept it
             # as an assistant message.
-            content_string: str = content_block.text # ["text"] # type: ignore
+            content_string: str = content_block.text # type: ignore
 
             if content_string == "": 
                 console.print("Received an empty response string.")
