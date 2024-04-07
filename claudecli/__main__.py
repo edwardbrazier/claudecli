@@ -164,9 +164,9 @@ def main(
 
     # If non interactive suppress the logging messages
     if non_interactive:
-        logger.setLevel("ERROR")
+        console.print("[red bold]Error[/red bold]")
 
-    logger.info("[bold]Claude CLI", extra={"highlighter": None})
+    console.print("[bold]Claude CLI[/bold]")
 
     # history = FileHistory(str(constants.HISTORY_FILE))
 
@@ -178,9 +178,7 @@ def main(
     try:
         config = load.load_config(logger=logger, config_file=str(constants.CONFIG_FILE)) # type: ignore
     except FileNotFoundError:
-        logger.error(
-            "[red bold]Configuration file not found", extra={"highlighter": None}
-        )
+        console.print("[red bold]Configuration file not found[/red bold]")
         sys.exit(1)
 
     # save.create_save_folder()
@@ -219,8 +217,8 @@ def main(
     if model:
         # First check whether the provided model is valid
         if model not in model_mapping:
-            logger.error(
-                f"[red bold]Invalid model: {model}", extra={"highlighter": None}
+            console.print(
+                f"[red bold]Invalid model: {model}[/red bold]"
             )
             sys.exit(1)
         else:
@@ -237,53 +235,52 @@ def main(
     # logger.info(
         # f"Supplier: [green bold]{config['supplier']}", extra={"highlighter": None}
     # )
-    logger.info(f"Model in use: [green bold]{config['anthropic_model']}", extra={"highlighter": None})
+    console.print(f"Model in use: [green bold]{config['anthropic_model']}[/green bold]")
 
     # Add the system message for code blocks in case markdown is enabled in the config file
     # if config["markdown"]:
         # add_markdown_system_message()
 
-    initial_context = ""
+    initial_context: Optional[str] = None
     codebase: str = ""
 
     # Source code location from command line option
     if sources:
         for source in sources:
-            logger.info(
-                f"Codebase location: [green bold]{source}\n",
-                extra={"highlighter": None},
+            console.print(
+                f"Codebase location: [green bold]{source}[/green bold]\n"
             )
-            logger.info(
+            console.print(
                 "The entire codebase will be prepended to your first message."
             )
 
             extensions = []
 
             if file_extensions is not None and file_extensions != "":
-                logger.info(
-                    f"Looking only at source files with extensions: [green bold]{file_extensions}\n",
-                    extra={"highlighter": None},
+                console.print(
+                    f"Looking only at source files with extensions: [green bold]{file_extensions}[/green bold]\n"
                 )
                 extensions = [ext.strip() for ext in file_extensions.split(",")]
 
             try:
-                codebase: str = load.load_codebase(logger, source, extensions)
-                initial_context += codebase
-                
-                # Show the user how big the entire codebase is, in kb. 
-                logger.info(
-                    f"Codebase size: [green bold]{pure.get_size(codebase)}\n",
-                )
+                codebase += load.load_codebase(logger, source, extensions)
             except FileNotFoundError as e:
-                print(f"Error reading codebase: {e}")
+                console.print(f"Error reading codebase: {e}")
 
-    # Context from the command line option
-    if context_files:
-        for c in context_files:
-            logger.info(
-                f"Context file: [green bold]{c.name}", extra={"highlighter": None}
-            )
-            initial_context = codebase
+        # Show the user how big the entire codebase is, in kb. 
+        console.print(
+            f"Codebase size: [green bold]{pure.get_size(codebase)}[/green bold]\n"
+        )
+
+        initial_context = codebase
+
+    # # Context from the command line option
+    # if context_files:
+    #     for c in context_files:
+    #         logger.info(
+    #             f"Context file: [green bold]{c.name}", extra={"highlighter": None}
+    #         )
+    #         initial_context = codebase
     #         messages.append({"role": "user", "content": c.read().strip()})
 
     # Restore a previous session
@@ -308,9 +305,8 @@ def main(
             )
 
     if json_mode:
-        logger.info(
-            "JSON response mode is active. Your message should contain the [bold]'json'[/bold] word.",
-            extra={"highlighter": None},
+        console.print(
+            "JSON response mode is active. Your message should contain the [bold]'json'[/bold] word."
         )
 
     if not non_interactive:

@@ -168,3 +168,6 @@ session-history/
 claude-cli.diff
 src/chatgpt_2.py
 src/chatgpt_transformed.py
+
+# misc
+out/
