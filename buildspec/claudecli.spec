@@ -2,7 +2,7 @@ a = Analysis(
     ['..\\claudecli\\__main__.py'],
     pathex=['..', '..\\claudecli', 'C:\\Users\\Edward\\Programming\\claudecli\\venv\\Lib\\site-packages'],
     binaries=[],
-    datas=[('..\\claudecli\\coder_system_prompt.txt', 'claudecli'), ('..\\claudecli', 'claudecli')],
+    datas=[('..\\claudecli', 'claudecli')],
     hiddenimports=[
         "anthropic",
         "black",
@@ -56,6 +56,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    onefile=True,
 )
 coll = COLLECT(
     exe,
