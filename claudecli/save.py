@@ -15,8 +15,8 @@ import xml.sax.saxutils
 
 from rich.console import Console
 
-from ai_functions import ResponseContent
-from parseaicode import FileData
+from claudecli.ai_functions import ResponseContent
+from claudecli.parseaicode import FileData
 
 console = Console()
 

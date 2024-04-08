@@ -13,10 +13,10 @@ from prompt_toolkit import HTML, PromptSession
 from typing import Optional, Union
 from rich.logging import RichHandler
 
-from printing import print_markdown, console
-import save
-from ai_functions import gather_ai_code_responses, prompt_ai
-from parseaicode import ResponseContent
+from claudecli.printing import print_markdown, console
+from claudecli import save
+from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
+from claudecli.parseaicode import ResponseContent
 
 logger = logging.getLogger("rich")
 

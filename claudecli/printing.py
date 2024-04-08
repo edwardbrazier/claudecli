@@ -1,64 +1,10 @@
 #!/bin/env python
 
-# import logging
-
-# from typing import Optional
 from rich.console import Console
-# # from rich.logging import RichHandler
 from rich.markdown import Markdown
-# from typing import Optional
-
-# import pure
-# import constants
 
 # Initialize the console
 console = Console()
-
-# def display_expense(logger: logging.Logger, model: str, prompt_tokens: int, completion_tokens: int) -> None:
-#     """
-#     Display the total tokens used and estimated expense for a given model.
-
-#     Args:
-#         logger (logging.Logger): The logger instance to use for logging.
-#         model (str): The name of the model used.
-#         prompt_tokens (int): The number of tokens in the prompt.
-#         completion_tokens (int): The number of tokens in the completion.
-
-#     Preconditions:
-#         - The `model` argument must be a valid model name.
-#         - The `prompt_tokens` and `completion_tokens` arguments must be non-negative integers.
-
-#     Side effects:
-#         - Logs the total tokens used and estimated expense to the console.
-
-#     Exceptions:
-#         None.
-
-#     Returns:
-#         None.
-#     """
-#     logger.info(
-#         f"\nTotal tokens used: [green bold]{prompt_tokens + completion_tokens}",
-#         extra={"highlighter": None},
-#     )
-
-#     if model in constants.constants.PRICING_RATE:
-#         total_expense = pure.calculate_expense(
-#             prompt_tokens,
-#             completion_tokens,
-#             constants.PRICING_RATE[model]["prompt"],
-#             constants.PRICING_RATE[model]["completion"],
-#         )
-#         logger.info(
-#             f"Estimated expense: [green bold]${total_expense}",
-#             extra={"highlighter": None},
-#         )
-#     else:
-#         logger.warning(
-#             f"[red bold]No expense estimate available for model {model}",
-#             extra={"highlighter": None},
-#         )
-
 
 def print_markdown(console: Console, content: str) -> None: #, code_blocks: Optional[dict] = None):
     """

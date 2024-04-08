@@ -6,8 +6,8 @@ from typing import Optional
 import anthropic
 import requests
 
-from parseaicode import parse_ai_responses, ResponseContent
-from printing import console
+from claudecli.parseaicode import parse_ai_responses, ResponseContent
+from claudecli.printing import console
 
 def setup_client(api_key: str) -> anthropic.Client:
     """

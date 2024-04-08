@@ -15,30 +15,16 @@ Functions:
     load_codebase(logger, base_path, extensions)
 """
 
-# import atexit
-# import click
-# import datetime
 import json
 import logging
 import os
-# import pyperclip
-# import re
-# import requests
-# import sys
 import yaml
-# import anthropic
 
 from pathlib import Path
-# from prompt_toolkit import PromptSession, HTML
-# from prompt_toolkit.history import FileHistory
-# from rich.console import Console
-# from rich.logging import RichHandler
-# from rich.markdown import Markdown
 from typing import Optional, List
-# from xdg_base_dirs import xdg_config_home
 
-import constants
-from printing import console
+from claudecli import constants
+from claudecli.printing import console
 
 class Codebase:
     def __init__(self, concatenated_contents: str, file_paths: list[str]):

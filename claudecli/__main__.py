@@ -11,11 +11,11 @@ import sys
 from prompt_toolkit import PromptSession
 from typing import Optional, List
 
-from ai_functions import setup_client
-import pure
-from interact import *
-import constants
-import load
+from claudecli.ai_functions import setup_client
+from claudecli import pure
+from claudecli.interact import *
+from claudecli import constants
+from claudecli import load
 
 @click.command()
 @click.option(
