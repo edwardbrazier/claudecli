@@ -173,3 +173,6 @@ src/chatgpt_transformed.py
 out/
 out2/
 out3/
+out4/
+buildspec/requirements.txt
+buildspec/chatgpt.spec

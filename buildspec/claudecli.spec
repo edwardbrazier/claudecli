@@ -1,12 +1,18 @@
-# -*- mode: python ; coding: utf-8 -*-
-
-
 a = Analysis(
     ['claudecli\\__main__.py'],
-    pathex=['C:\\Users\\Edward\\Programming\\claudecli\\venv\\Lib\\site-packages'],
+    pathex=['claudecli', 'C:\\Users\\Edward\\Programming\\claudecli\\venv\\Lib\\site-packages'],
     binaries=[],
-    datas=[],
+    datas=[('claudecli\\coder_system_prompt.txt', '.'), ('claudecli\\general_system_prompt.txt', '.')],
     hiddenimports=[
+        'claudecli.ai_functions',
+        'claudecli.pure',
+        'claudecli.interact',
+        'claudecli.constants',
+        'claudecli.load',
+        'claudecli.save',
+        'claudecli.parseaicode',
+        'claudecli.printing',
+        "anthropic",
         "black",
         "certifi",
         "charset-normalizer",
@@ -35,16 +41,19 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=None,
     noarchive=False,
 )
-pyz = PYZ(a.pure)
+pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
 exe = EXE(
     pyz,
     a.scripts,
     [],
     exclude_binaries=True,
-    name='__main__',
+    name='claudecli',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -63,6 +72,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='__main__',
-    options=[('onefile', '')]
+    name='claudecli',
 )
