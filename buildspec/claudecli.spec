@@ -1,8 +1,8 @@
 a = Analysis(
-    ['claudecli\\__main__.py'],
-    pathex=['claudecli', 'C:\\Users\\Edward\\Programming\\claudecli\\venv\\Lib\\site-packages'],
+    ['..\\claudecli\\__main__.py'],
+    pathex=['..\\claudecli', 'C:\\Users\\Edward\\Programming\\claudecli\\venv\\Lib\\site-packages'],
     binaries=[],
-    datas=[('claudecli\\coder_system_prompt.txt', '.'), ('claudecli\\general_system_prompt.txt', '.')],
+    datas=[('..\\claudecli\\coder_system_prompt.txt', '.')],
     hiddenimports=[
         'claudecli.ai_functions',
         'claudecli.pure',
