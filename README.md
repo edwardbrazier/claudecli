@@ -3,11 +3,15 @@
 
 ## Overview
 
-Command line interface to Claude, for chatting and generating code.
+Command line interface to Anthropic's Claude, for chatting and generating code.
+This is a developer tool.
+The distinctive feature of this tool is that it can put codebases into the context for Claude, so that Claude can see all of your code when giving advice, writing new code and writing modifications to the code.
+
+The author of this tool is not affiliated in any way with Anthropic, which owns the Claude model.
 
 ## How to get an API Key
 
-TODO
+As of April 2024: To get an API Key to access Claude, go to the Anthropic website and select the 'API' page, which is titled 'Build with Claude'.
 
 ## Installation and essential configuration
 
