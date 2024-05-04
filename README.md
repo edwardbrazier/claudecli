@@ -4,8 +4,8 @@
 ## Overview
 
 Command line interface to Anthropic's Claude, for chatting and generating code.
-This is a developer tool.
-The distinctive feature of this tool is that it can put codebases into the context for Claude, so that Claude can see all of your code when giving advice, writing new code and writing modifications to the code.
+
+This is a developer tool. The distinctive feature of this tool is that it can put codebases into the context for Claude, so that Claude can see all of your code when giving advice, writing new code and writing modifications to the code. It supports both a chat interface and a command for sending Claude's output into multiple source files.
 
 The author of this tool is not affiliated in any way with Anthropic, which owns the Claude model.
 
@@ -37,7 +37,6 @@ On a Linux/MacOS system it is defined by the $XDG_CONFIG_HOME variable (check it
 
 On the first execution of the script, a [template](config.yaml) of the config file is automatically created. If a config file already exists but is missing any fields, default values are used for the missing fields.
 
-
 ## Models
 
 As of May 2024, ClaudeCLI supports all three models in the Claude 3 series: haiku, sonnet and opus.
@@ -47,7 +46,8 @@ Haiku is the fastest and cheapest model. Opus is the most capable. Sonnet is in 
 ## Basic usage
 
 Here is a usage example on Windows in Powershell.
-Sometimes you need to press Enter an extra time to get ClaudeCLI's result.
+
+Start from any folder that you have read/write access to.
 
 ```
 > git clone https://github.com/edwardbrazier/claudecli.git
@@ -61,7 +61,9 @@ Sometimes you need to press Enter an extra time to get ClaudeCLI's result.
 > ls ..\..\out
 ```
 
-Here the '-s' parameter specifies the codebase to supply to Claude as context, the '-e' parameter specifies which file extensions to look at in the codebase, '-m' is the AI model to use, '-o' is the output directory and '-csp' is the system prompt for outputting code to files. (A different system prompt is used when outputting code to the shell.)
+Sometimes you need to press Enter an extra time to get ClaudeCLI's result.
+
+In the above command, the '-s' parameter specifies the codebase to supply to Claude as context, the '-e' parameter specifies which file extensions to look at in the codebase, '-m' is the AI model to use, '-o' is the output directory and '-csp' is the system prompt for outputting code to files. (A different system prompt is used when outputting code to the shell.)
 
 You can then use the diff / merge function in your IDE to compare Claude's output (in ..\..\out\ai_functions.py) with your existing file (..\..\claudecli\ai_functions.py) and merge the differences.
 
@@ -72,6 +74,49 @@ To get more usage instructions, run:
 > cd dist\claudecli
 > .\claudecli.exe --help
 ```
+
+Here is the output:
+Usage: python -m claudecli [OPTIONS]
+
+  Command-line interface to the Anthropic Claude AI. Supports chat
+  conversations. Also supports code output from Claude to multiple files at
+  once.
+
+  Write '/q' to end the chat. Write '/o <instructions>' to ask Claude for
+  code, which the application will output to the selected output directory.
+  '<instructions>' represents your instructions to Claude. For example:  >>>
+  /o improve the commenting in load.py
+
+Options:
+  -s, --source PATH               Pass an entire codebase to the model as
+                                  context, from the specified location. Repeat
+                                  this option and its argument any number of
+                                  times. The codebase will only be loaded
+                                  once.
+  -e, --file-extensions TEXT      File name extensions of files to look at in
+                                  the codebase, separated by commas without
+                                  spaces, e.g. py,txt,md Only use this option
+                                  once, even for multiple codebases.
+  -m, --model TEXT                Set the model. In ascending order of
+                                  capability, the options are: 'haiku',
+                                  'sonnet', 'opus'
+  -ml, --multiline                Use the multiline input mode. To submit a
+                                  multiline input in Bash on Windows, press
+                                  Escape and then Enter.
+  -o, --output-dir PATH           The output directory for generated files
+                                  when using the /o command. Defaults to the
+                                  current working directory.
+  -f, --force                     Force overwrite of output files if they
+                                  already exist.
+  -csp, --coder-system-prompt PATH
+                                  Path to the file containing the Coder System
+                                  Prompt. Defaults to
+                                  '~/.claudecli_coder_system_prompt.txt'.
+  -gsp, --general-system-prompt PATH
+                                  Path to the file containing the General
+                                  System Prompt. Defaults to
+                                  '~/.claudecli_general_system_prompt.txt'.
+  --help                          Show this message and exit.
 
 ## Multiline input
 
