@@ -104,6 +104,8 @@ def main(
     Write '/q' to end the chat.
     Write '/o <instructions>' to ask Claude for code, which the application will output to the selected output directory.
     '<instructions>' represents your instructions to Claude.
+    For example: 
+    >>> /o improve the commenting in load.py
     """
 
     console.print("[bold]ClaudeCLI[/bold]")
