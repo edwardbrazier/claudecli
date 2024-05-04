@@ -54,6 +54,12 @@ Start from any folder that you have read/write access to.
 > cd claudecli
 > mkdir out
 > cd dist\claudecli
+> # Start with a simple example
+> .\claudecli.exe
+>>> What is the capital of New Zealand?
+The capital of New Zealand is Wellington.
+>>> /q
+> # Now a more complex example.
 > .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o ..\..\out -csp ..\..\claudecli\coder_system_prompt.txt
 >>> Summarise.
 >>> /o Rewrite part of ai_functions.py to force the model to opus.
