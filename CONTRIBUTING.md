@@ -11,9 +11,10 @@ Some elements of the code style are specified (for Claude's benefit) in coder_sy
 ### Development
 
 Check out the repository:
-
-`git clone https://github.com/edwardbrazier/claudecli.git`
-`cd claudecli`
+```
+git clone https://github.com/edwardbrazier/claudecli.git
+cd claudecli
+```
 
 Create and activate a Virtual Environment:
 
