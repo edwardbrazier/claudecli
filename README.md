@@ -15,7 +15,24 @@ As of April 2024: To get an API Key to access Claude, go to the Anthropic websit
 
 ## Installation and essential configuration
 
-TODO
+There are two ways of running this program:
+1. From the Windows exe file ./dist/claudecli.exe, which depends on some other local files.
+2. From the source code, using Python.
+
+The supported shells are:
+1. Powershell on Windows
+2. Bash
+
+The Windows Command Prompt is not supported and will not work properly.
+
+Here is a usage example on Windows in Powershell:
+```
+> cd dist/claudecli
+> .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o out -csp ..\..\claudecli\coder_system_prompt.txt
+>>> Summarise.
+>>> /o Rewrite ai_functions.py to force the model to opus.
+>>> /q
+```
 
 ### Configuration file
 

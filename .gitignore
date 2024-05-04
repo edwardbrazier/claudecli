@@ -170,7 +170,7 @@ src/chatgpt_2.py
 src/chatgpt_transformed.py
 
 # misc
-out/
+out/*
 out2/
 out3/
 out4/
