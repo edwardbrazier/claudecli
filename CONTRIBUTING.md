@@ -6,7 +6,7 @@ Contributions to this project are welcome!
 
 The philosophy behind this tool is to provide a way for Claude to write code for you and provide advice, even if you don't know your way around the codebase well enough to provide the right files as context.
 
-The code style is specified in coder_system_prompt.txt.
+Some elements of the code style are specified (for Claude's benefit) in coder_system_prompt.txt. This project uses Black (https://github.com/psf/black) as a code formatter (Most IDE have an extension that makes straightforward to use it). Please format the code using this tool before submitting a PR.
 
 ### Development
 
@@ -35,6 +35,3 @@ After the changes are done don't forget to:
 - update `pyproject.toml` with a new version number
 - test if the installation as a package still works as expected using `pip install .` and running `claudecli`
 
-### Formatting
-
-This project uses Black (https://github.com/psf/black) as a code formatter (Most IDE have an extension that makes straightforward to use it). Please format the code using this tool before submitting a PR.
