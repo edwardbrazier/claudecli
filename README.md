@@ -130,6 +130,16 @@ configuration.
 
 Writing to out\ai_functions.py...
 Finished saving AI output.
+>>> /q
+> ls out
+
+    Directory: [...]\claudecli\out
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----         4/05/2024   4:08 PM           9335 ai_functions.py
+-a----         4/05/2024   4:08 PM           9611 concatenated_output.txt
 ```
 
 In the command used to call ClaudeCLI, '-o' is the output directory and '-csp' is the system prompt for outputting code to files.
