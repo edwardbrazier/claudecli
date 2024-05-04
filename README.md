@@ -76,6 +76,7 @@ To get more usage instructions, run:
 ```
 
 Here is the output:
+```
 Usage: python -m claudecli [OPTIONS]
 
   Command-line interface to the Anthropic Claude AI. Supports chat
@@ -117,6 +118,7 @@ Options:
                                   System Prompt. Defaults to
                                   '~/.claudecli_general_system_prompt.txt'.
   --help                          Show this message and exit.
+```
 
 ## Multiline input
 
