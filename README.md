@@ -18,7 +18,7 @@ As of April 2024: To get an API Key to access Claude, go to the Anthropic websit
 Before you run ClaudeCLI, put your Anthropic API key into the environment variable ANTHROPIC_API_KEY. 
 
 There are two ways of running this program:
-1. From the Windows exe file ./dist/claudecli.exe, which depends on some other local files.
+1. From the Windows exe file ./dist/claudecli.exe, which depends on some other files in the repository.
 2. From the source code, using Python. (See [CONTRIBUTING.md](CONTRIBUTING.md))
 
 The supported shells are:
