@@ -26,12 +26,13 @@ from typing import Optional, List
 from claudecli import constants
 from claudecli.printing import console
 
+
 class Codebase:
     def __init__(self, concatenated_contents: str, file_paths: list[str]):
         self.concatenated_contents = concatenated_contents
         self.file_paths = file_paths
 
-    def __add__(self, other: 'Codebase') -> 'Codebase':
+    def __add__(self, other: "Codebase") -> "Codebase":
         """
         Overload the `+` operator to concatenate two `Codebase` objects.
         Args:
@@ -51,7 +52,8 @@ class Codebase:
         # Include both the string and the file names.
         return f"{self.concatenated_contents}\n\n---\n\n{self.file_paths}"
 
-def load_config(logger: logging.Logger, config_file: str) -> dict: # type: ignore
+
+def load_config(logger: logging.Logger, config_file: str) -> dict:  # type: ignore
     """
     Read a YAML config file and return its content as a dictionary.
 
@@ -77,7 +79,7 @@ def load_config(logger: logging.Logger, config_file: str) -> dict: # type: ignor
     if not Path(config_file).exists():
         os.makedirs(os.path.dirname(config_file), exist_ok=True)
         with open(config_file, "w", encoding="utf-8") as file:
-            yaml.dump(constants.DEFAULT_CONFIG, file, default_flow_style=False) # type: ignore
+            yaml.dump(constants.DEFAULT_CONFIG, file, default_flow_style=False)  # type: ignore
         logger.info(f"New config file initialized: [green bold]{config_file}")
 
     # Load existing config
@@ -85,14 +87,14 @@ def load_config(logger: logging.Logger, config_file: str) -> dict: # type: ignor
         config = yaml.load(file, Loader=yaml.FullLoader)
 
     # Update the loaded config with any default values that are missing
-    for key, value in constants.DEFAULT_CONFIG.items(): # type: ignore
+    for key, value in constants.DEFAULT_CONFIG.items():  # type: ignore
         if key not in config:
             config[key] = value
 
     return config
 
 
-def load_history_data(history_file: str) -> dict: # type: ignore
+def load_history_data(history_file: str) -> dict:  # type: ignore
     """
     Read a session history JSON file and return its content.
 
@@ -138,14 +140,13 @@ def get_last_save_file() -> Optional[str]:
         Optional[str]: The timestamp of the last saved session, or None if no session files exist.
         Guarantees: The returned value will be a valid timestamp string or None.
     """
-    files: list[str] = [f for f in os.listdir(str(constants.SAVE_FOLDER)) if f.endswith(".json")] # type: ignore
+    files: list[str] = [f for f in os.listdir(str(constants.SAVE_FOLDER)) if f.endswith(".json")]  # type: ignore
 
     if files:
-        ts = [f.replace("claudecli-session-", "").replace(".json", "") for f in files]                  # type: ignore
-        ts.sort()                                                                                       # type: ignore
-        return ts[-1]                                                                                   # type: ignore
+        ts = [f.replace("claudecli-session-", "").replace(".json", "") for f in files]  # type: ignore
+        ts.sort()  # type: ignore
+        return ts[-1]  # type: ignore
     return None
-
 
 
 def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
@@ -171,7 +172,7 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
 
     Returns:
         Codebase: A Codebase object containing the concatenated file contents and a list of loaded file paths.
-        guarantees: The returned Codebase object will contain the concatenated file contents and a list of file paths. 
+        guarantees: The returned Codebase object will contain the concatenated file contents and a list of file paths.
                     These may be empty.
     """
 
@@ -182,7 +183,7 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     concatenated_contents = ""
     matched_files_found = False
 
-    encodings = ['utf-8', 'cp1252', 'iso-8859-1']
+    encodings = ["utf-8", "cp1252", "iso-8859-1"]
 
     concatenated_contents += "<codebase_subfolder>\n"
 
@@ -191,7 +192,9 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     # Walk through the directory and subdirectories
     for root, _, files in os.walk(base_path):
         for file_name in files:
-            if any(file_name.endswith(f".{ext}") for ext in extensions) or not(any(extensions)):
+            if any(file_name.endswith(f".{ext}") for ext in extensions) or not (
+                any(extensions)
+            ):
                 matched_files_found = True
                 file_path = Path(root) / file_name
                 # relative_path = file_path.relative_to(base_path)
@@ -201,22 +204,27 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
 
                     for encoding in encodings:
                         try:
-                            with open(file_path, 'r', encoding=encoding) as file:
+                            with open(file_path, "r", encoding=encoding) as file:
                                 contents = file.read()
-                                concatenated_contents += \
-                                    f"<file>\n" \
-                                    f"<path>{str(file_path)}</path>\n" \
-                                    f"<content>{contents}</content>\n" \
+                                concatenated_contents += (
+                                    f"<file>\n"
+                                    f"<path>{str(file_path)}</path>\n"
+                                    f"<content>{contents}</content>\n"
                                     f"</file>\n"
+                                )
                                 codebase_files.append(str(file_path))
-                                
+
                                 break
                         except Exception as e:
-                            console.print(f"Failed to open file {file_path} with encoding {encoding}: {e}")
+                            console.print(
+                                f"Failed to open file {file_path} with encoding {encoding}: {e}"
+                            )
 
     concatenated_contents += "</codebase_subfolder>\n"
 
     if not matched_files_found:
         raise FileNotFoundError("No matching files found.")
 
-    return Codebase(concatenated_contents=concatenated_contents, file_paths=codebase_files)
+    return Codebase(
+        concatenated_contents=concatenated_contents, file_paths=codebase_files
+    )

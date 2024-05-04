@@ -1,17 +1,18 @@
-## How to contribute to ChatGPT CLI
+## How to contribute to ClaudeCLI
 
-External contributes to this project are welcome! :heart: :heart:
+Contributions to this project are welcome! 
 
 ### Philosophy
 
-The philosophy behind this tool is to keep things simple, while at the same time to provide all the features that really matters for users who need to interact with ChatGPT models from the command line in a quick and efficient way.
-Regarding the code, the original idea was to have a single, well structured, Python script. Since then, many new features and improvements had been added and it may be necessary at some point to refactor it in a mode modular way...
+The philosophy behind this tool is to provide a way for Claude to write code for you and provide advice, even if you don't know your way around the codebase well enough to provide the right files as context.
+
+The code style is specified in coder_system_prompt.txt.
 
 ### Development
 
 Check out the repository:
 
-`git clone https://github.com/sevenquanta/chatgpt-cli.git`
+`git clone https://github.com/edwardbrazier/claudecli.git`
 
 Create and activate a Virtual Environment:
 
@@ -25,14 +26,14 @@ Install the requirements:
 
 Run the code during development:
 
-`python src/chatgpt.py`
+`python3 -m claudecli`
 
 After the changes are done don't forget to:
 
 - update `requirements.txt` and `setup.cfg` if necessary
 - update `README.md` if necessary
 - update `pyproject.toml` with a new version number
-- test if the installation as a package still works as expected using `pip install .` and running `chatgpt-cli`
+- test if the installation as a package still works as expected using `pip install .` and running `claudecli`
 
 ### Formatting
 

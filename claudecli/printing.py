@@ -6,7 +6,10 @@ from rich.markdown import Markdown
 # Initialize the console
 console = Console()
 
-def print_markdown(console: Console, content: str) -> None: #, code_blocks: Optional[dict] = None):
+
+def print_markdown(
+    console: Console, content: str
+) -> None:  # , code_blocks: Optional[dict] = None):
     """
     Print markdown formatted text to the terminal.
 
@@ -67,4 +70,3 @@ def print_markdown(console: Console, content: str) -> None: #, code_blocks: Opti
     #     console.print(Markdown("\n".join(code_block_content)))
     # elif regular_content:  # If there's any remaining regular content, print it
     #     console.print(Markdown("\n".join(regular_content)))
-
