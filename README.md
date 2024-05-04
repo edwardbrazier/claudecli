@@ -62,7 +62,21 @@ The capital of New Zealand is Wellington.
 > # Now a more complex example.
 > .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o ..\..\out -csp ..\..\claudecli\coder_system_prompt.txt
 >>> Summarise.
->>> /o Rewrite part of ai_functions.py to force the model to opus.
+This codebase provides a command-line interface for interacting with the Anthropic Claude AI model. It allows users to
+provide context from local files or directories, set various options, and engage in a conversational session with the
+model. The key features of this codebase include:
+
+ 1 Loading and processing a codebase as context for the AI model.
+ 2 Handling user prompts and generating responses from the AI model.
+ 3 Saving the AI's output to files, including the concatenated output and any generated code files.
+ 4 Parsing the AI's XML-formatted responses to extract the generated code and file changes.
+ 5 Providing a system prompt for the AI to follow specific formatting and style guidelines.
+ 6 Handling exceptions and errors that may occur during the interaction with the AI model.
+ 7 Providing configuration options and loading/saving session history.
+
+The codebase is structured into several modules, each with its own responsibilities, such as ai_functions, parseaicode,
+printing, load, save, and interact. The main entry point is the __main__.py file, which handles the command-line
+interface and coordinates the various components.
 >>> /q
 > ls ..\..\out
 ```
