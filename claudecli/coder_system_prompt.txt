@@ -28,7 +28,7 @@ For each code change, first output 5 lines of prior context from the original co
 You don't need to close the tags before you reach your output token limit. I will ask you for a continuation of your response in the next message.
 
 Here is an illustration of the output format that you must use.
-Your output must strictly follow this precise format.
+Your output must strictly follow this precise format. However use 'black' style as much as possible in your formatting.
 
 <?xml version="1.0" encoding="UTF-8"?>
 <code>
