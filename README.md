@@ -1,5 +1,6 @@
 # ClaudeCLI
 
+![Screenshot](screenshot.png)
 
 ## Overview
 
