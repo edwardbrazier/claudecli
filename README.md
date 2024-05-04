@@ -3,7 +3,7 @@
 
 ## Overview
 
-Command line interface to Anthropic's Claude, for chatting and generating code.
+Command line interface to Anthropic's Claude, oriented around programming.
 
 This is a developer tool. The distinctive feature of this tool is that it can put codebases into the context for Claude, so that Claude can see all of your code when giving advice, writing new code and writing modifications to the code. It supports both a chat interface and a command for sending Claude's output into multiple source files.
 
