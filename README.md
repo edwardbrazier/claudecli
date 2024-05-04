@@ -116,6 +116,20 @@ language tags. If asked for a table, always format it using Markdown syntax.
 Output files will be written to: out
 
 >>> /o Modify ai_functions.py so that it always uses the opus model.
+Received response.
+
+Writing complete AI output to out\concatenated_output.txt
+Files included in the result:
+- ..\..\claudecli\ai_functions.py
+Changes:
+Modified the gather_ai_code_responses function to always use the 'opus' model, regardless of the model specified in the
+configuration.
+
+
+
+
+Writing to out\ai_functions.py...
+Finished saving AI output.
 ```
 
 In the command used to call ClaudeCLI, '-o' is the output directory and '-csp' is the system prompt for outputting code to files.
