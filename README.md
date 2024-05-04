@@ -45,22 +45,25 @@ Haiku is the fastest and cheapest model. Opus is the most capable. Sonnet is in 
 
 ## Basic usage
 
-Here is a usage example on Windows in Powershell.
+Here are some usage examples on Windows in Powershell.
 
 Start from any folder that you have read/write access to.
 
+First a simple, generic example:
 ```
 > git clone https://github.com/edwardbrazier/claudecli.git
 > cd claudecli
 > mkdir out
 > cd dist\claudecli
-> # Start with a simple example
 > .\claudecli.exe
 >>> What is the capital of New Zealand?
 The capital of New Zealand is Wellington.
 >>> /q
-> # Now a more complex example.
-> .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o ..\..\out -csp ..\..\claudecli\coder_system_prompt.txt
+```
+
+Now a simple programming-oriented example:
+```
+> .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku
 >>> Summarise.
 This codebase provides a command-line interface for interacting with the Anthropic Claude AI model. It allows users to
 provide context from local files or directories, set various options, and engage in a conversational session with the
@@ -78,7 +81,10 @@ The codebase is structured into several modules, each with its own responsibilit
 printing, load, save, and interact. The main entry point is the __main__.py file, which handles the command-line
 interface and coordinates the various components.
 >>> /q
-> ls ..\..\out
+```
+
+```
+> .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o ..\..\out -csp ..\..\claudecli\coder_system_prompt.txt
 ```
 
 Sometimes you need to press Enter an extra time to get ClaudeCLI's result.
