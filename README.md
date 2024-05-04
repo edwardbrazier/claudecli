@@ -142,14 +142,15 @@ Mode                 LastWriteTime         Length Name
 -a----         4/05/2024   4:08 PM           9611 concatenated_output.txt
 ```
 
+In this example, ClaudeCLI has sent some code written by Claude to a file called ai_functions.py in the 'out' directory.  
+You can then use the diff / merge function in your IDE to compare this new file with your existing source file (..\..\claudecli\ai_functions.py) and merge the differences.
+
 In the command used to call ClaudeCLI, '-o' is the output directory and '-csp' is the system prompt for outputting code to files.
 In the command used inside ClaudeCLI, '/o' means to output the results to source files in the output directory (in this case, the folder 'out').
 
 When you supply a codebase to ClaudeCLI, it will always tell you the size of the codebase in kilobytes. This and the choice of model are the main determinants of the cost of each message to Claude. If the codebase is more than a megabyte, then it will not work: This is too big for Claude's context window. Check the codebase size each time to make sure that you have not accidentally included too much code into the context, because this will mean that each message to Claude costs more money (API credits) than you intend. 
 
 Sometimes you need to press Enter an extra time to get ClaudeCLI's result.
-
-You can then use the diff / merge function in your IDE to compare Claude's output (in ..\..\out\ai_functions.py) with your existing file (..\..\claudecli\ai_functions.py) and merge the differences.
 
 When you use '/o' to direct ClaudeCLI to output its response to a code file, ClaudeCLI will also produce a file called concatenated_output.txt in the output directory (in this case ..\..\out). This file has the raw output of Claude. If Claude's output is malformed and can't be divided into separate code files by ClaudeCLI's parser, then you can look at concatenated_output.txt to see whether the raw output of Claude is useful to you.
 
