@@ -61,9 +61,10 @@ The capital of New Zealand is Wellington.
 >>> /q
 ```
 
-Now a simple programming-oriented example:
+Now a simple programming-oriented example, again starting from the dist/claudecli directory:
 ```
 > .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku
+# (some output has been omitted here for clarity)
 >>> Summarise.
 This codebase provides a command-line interface for interacting with the Anthropic Claude AI model. It allows users to
 provide context from local files or directories, set various options, and engage in a conversational session with the
@@ -83,13 +84,46 @@ interface and coordinates the various components.
 >>> /q
 ```
 
+In the above command, the '-s' parameter specifies the codebase to supply to Claude as context, the '-e' parameter specifies which file extensions to look at in the codebase and '-m' specifies the AI model to use.
+
+Now an example of outputting code from Claude to some files, again starting from the dist/claudecli directory:
 ```
-> .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o ..\..\out -csp ..\..\claudecli\coder_system_prompt.txt
+> mkdir out
+> .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o out -csp ..\..\claudecli\coder_system_prompt.txt
+Model in use: claude-3-haiku-20240307
+
+Looking only at source files with extensions: py,txt
+Codebase location: ..\..\claudecli
+Loading file: ..\..\claudecli\ai_functions.py
+Loading file: ..\..\claudecli\coder_system_prompt.txt
+Loading file: ..\..\claudecli\constants.py
+Loading file: ..\..\claudecli\interact.py
+Loading file: ..\..\claudecli\load.py
+Loading file: ..\..\claudecli\parseaicode.py
+Loading file: ..\..\claudecli\printing.py
+Loading file: ..\..\claudecli\pure.py
+Loading file: ..\..\claudecli\save.py
+Loading file: ..\..\claudecli\__init__.py
+Loading file: ..\..\claudecli\__main__.py
+
+Codebase size: 67.48 KB
+
+General System Prompt file not found. Using default prompt.
+Default General System Prompt:
+You are a helpful AI assistant which answers questions about programming. Always use code blocks with the appropriate
+language tags. If asked for a table, always format it using Markdown syntax.
+
+Output files will be written to: out
+
+>>> /o Modify ai_functions.py so that it always uses the opus model.
 ```
+
+In the command used to call ClaudeCLI, '-o' is the output directory and '-csp' is the system prompt for outputting code to files.
+In the command used inside ClaudeCLI, '/o' means to output the results to source files in the output directory (in this case, the folder 'out').
+
+When you supply a codebase to ClaudeCLI, it will always tell you the size of the codebase in kilobytes. This and the choice of model are the main determinants of the cost of each message to Claude. If the codebase is more than a megabyte, then it will not work: This is too big for Claude's context window. Check the codebase size each time to make sure that you have not accidentally included too much code into the context, because this will mean that each message to Claude costs more money (API credits) than you intend. 
 
 Sometimes you need to press Enter an extra time to get ClaudeCLI's result.
-
-In the above command, the '-s' parameter specifies the codebase to supply to Claude as context, the '-e' parameter specifies which file extensions to look at in the codebase, '-m' is the AI model to use, '-o' is the output directory and '-csp' is the system prompt for outputting code to files. (A different system prompt is used when outputting code to the shell.)
 
 You can then use the diff / merge function in your IDE to compare Claude's output (in ..\..\out\ai_functions.py) with your existing file (..\..\claudecli\ai_functions.py) and merge the differences.
 
