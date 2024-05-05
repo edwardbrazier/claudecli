@@ -6,7 +6,7 @@ from typing import Optional
 import anthropic
 import requests
 
-from claudecli.parseaicode import parse_ai_responses, ResponseContent
+from claudecli.parseaicode import parse_ai_responses, CodeResponse, ChatResponse, Usage, sum_usages
 from claudecli.printing import console
 
 
@@ -40,7 +40,7 @@ def prompt_ai(
     model: str,
     messages: list[dict[str, str]],
     system_prompt: str,
-) -> Optional[str]:
+) -> Optional[ChatResponse]:
     """
     Generate an AI response to the given prompt using the Anthropic API.
     This is a general-purpose interaction with the AI, not specific to code generation.
@@ -102,7 +102,7 @@ def prompt_ai(
             console.print("Received an empty response string.")
             return None
         else:
-            return content_string
+            return ChatResponse(content_string=content_string, usage=Usage(response.usage.input_tokens, response.usage.output_tokens))
 
 
 def gather_ai_code_responses(
@@ -110,9 +110,9 @@ def gather_ai_code_responses(
     model: str,
     messages: list[dict[str, str]],
     system_prompt: str,
-) -> Optional[ResponseContent]:
+) -> Optional[CodeResponse]:
     """
-    Generate a series of AI responses to the given prompt using the Anthropic API until the stop signal is received.
+    Generate a series of AI code responses to the given prompt using the Anthropic API until the stop signal is received.
 
     Args:
         client (anthropic.Client): The Anthropic client instance.
@@ -149,6 +149,7 @@ def gather_ai_code_responses(
 
     responses: list[str] = []
     concatenated_responses: str = ""
+    usage_tally = Usage(0,0)
     finished = False
     max_turns = 10
     separator = "\n-------------------------------\n"
@@ -171,6 +172,7 @@ def gather_ai_code_responses(
 
         content = response.content
         print(f"Received response.")
+        usage_tally = sum_usages(usage_tally,Usage(response.usage.input_tokens, response.usage.output_tokens))
 
         content_string: str = ""
 
@@ -198,15 +200,16 @@ def gather_ai_code_responses(
 
         if (finished or force_parse) and parse_result.file_data_list is None:
             console.print("[bold yellow]Failed to parse AI responses.[/bold yellow]")
-            return ResponseContent(
-                content_string=separator.join(responses), file_data_list=[]
+            return CodeResponse(
+                content_string=separator.join(responses), file_data_list=[], usage=usage_tally
             )
         elif (finished or force_parse) and parse_result.file_data_list is not None:
             concatenated_responses = separator.join(responses)
 
-            response_content = ResponseContent(
+            response_content = CodeResponse(
                 content_string=concatenated_responses,
                 file_data_list=parse_result.file_data_list,
+                usage=usage_tally
             )
             return response_content
         elif not finished:  # assume force_parse == False now
@@ -231,4 +234,4 @@ def gather_ai_code_responses(
 
     print("[bold yellow]Reached turn limit.[/bold yellow]")
 
-    return ResponseContent(content_string=concatenated_responses, file_data_list=[])
+    return CodeResponse(content_string=concatenated_responses, file_data_list=[],usage=Usage(0,0))

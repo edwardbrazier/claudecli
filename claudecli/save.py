@@ -15,14 +15,14 @@ import xml.sax.saxutils
 
 from rich.console import Console
 
-from claudecli.ai_functions import ResponseContent
+from claudecli.ai_functions import CodeResponse
 from claudecli.parseaicode import FileData
 
 console = Console()
 
 
 def save_ai_output(
-    response_content: ResponseContent, output_dir: str, force_overwrite: bool
+    response_content: CodeResponse, output_dir: str, force_overwrite: bool
 ) -> None:
     """
     Save the AI's output to files.
@@ -47,7 +47,7 @@ def save_ai_output(
         None
     """
     assert isinstance(
-        response_content, ResponseContent
+        response_content, CodeResponse
     ), "response_content must be a ResponseContent object"
     assert isinstance(output_dir, str), "output_dir must be a string"
     assert isinstance(force_overwrite, bool), "force_overwrite must be a bool"
@@ -56,7 +56,7 @@ def save_ai_output(
     concat_file_path = os.path.join(output_dir, "concatenated_output.txt")
 
     console.print(
-        f"\n[bold green]Writing complete AI output to {concat_file_path}[/bold green]"
+        f"[bold green]Writing complete AI output to {concat_file_path}[/bold green]"
     )
 
     with open(concat_file_path, "w") as f:
@@ -72,10 +72,9 @@ def save_ai_output(
     else:
         for relative_path, _, changes in file_data_list:
             console.print(
-                f"[bold magenta]- {relative_path}[/bold magenta]\n[bold green]Changes:[/bold green] {changes}\n"
+                f"[bold magenta]- {relative_path}[/bold magenta]"
             )
-
-        console.print("\n")
+            console.print(f"[bold green]Changes:[/bold green] {changes}")
 
         write_files(output_dir, file_data_list, force_overwrite)
 

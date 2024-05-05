@@ -25,6 +25,7 @@ from typing import Optional, List
 
 from claudecli import constants
 from claudecli.printing import console
+from claudecli.pure import get_size
 
 
 class Codebase:
@@ -200,8 +201,6 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
                 # relative_path = file_path.relative_to(base_path)
 
                 if "__pycache__" not in str(file_path):
-                    console.print(f"Loading file: {file_path}")
-
                     for encoding in encodings:
                         try:
                             with open(file_path, "r", encoding=encoding) as file:
@@ -224,6 +223,9 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
 
     if not matched_files_found:
         raise FileNotFoundError("No matching files found.")
+
+    console.print(f"\tLoaded [green bold]{len(codebase_files)} files[/green bold] from codebase.")
+    console.print(f"\tCodebase size: [green bold]{get_size(concatenated_contents)}[/green bold]")
 
     return Codebase(
         concatenated_contents=concatenated_contents, file_paths=codebase_files

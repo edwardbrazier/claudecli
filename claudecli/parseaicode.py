@@ -5,19 +5,54 @@ import xml.etree.ElementTree as ET
 
 
 class FileData(NamedTuple):
+    """
+    Represents the data of the files from the AI's response.
+    """
     relative_path: str
     contents: str
     changes: str
 
 
 class ParseResult(NamedTuple):
+    """
+    Represents the result from attempting to parse a code response from the AI.
+    """
     finished: bool
     file_data_list: Optional[list[FileData]]
 
 
-class ResponseContent(NamedTuple):
+class Usage(NamedTuple):
+    """
+    Represents the number of tokens used by the model for the input and output.
+    """
+    input_tokens: int
+    output_tokens: int
+
+    def __repr__(self):
+        return f"Input - {self.input_tokens}; Output - {self.output_tokens}"
+
+def sum_usages(u1: Usage, u2: Usage):
+    """
+    Overload the + operator to add two Usage tallies.
+    """
+    assert isinstance(u1, Usage) and isinstance(u2, Usage), "Both arguments must be Usage objects"
+    return Usage(u1.input_tokens + u2.input_tokens, u1.output_tokens + u2.output_tokens)
+
+class CodeResponse(NamedTuple):
+    """
+    Represents the response from the Anthropic API for a code prompt.
+    """
     content_string: str
     file_data_list: list[FileData]
+    usage: Usage
+
+
+class ChatResponse(NamedTuple):
+    """
+    Represents the response from the Anthropic API for a chat prompt.
+    """
+    content_string: str
+    usage: Usage
 
 
 def get_element_text(element: ET.Element, tag: str) -> Optional[str]:
@@ -208,7 +243,7 @@ def process_assistant_response(response: str) -> Optional[list[FileData]]:
         None.
 
     Returns:
-        Optional[List[FileData]]: A list of FileData objects if the path and content are successfully extracted,
+        Optional[list[FileData]]: A list of FileData objects if the path and content are successfully extracted,
         or None if either is missing.
         guarantees: The returned value is either a list of FileData objects or None.
     """

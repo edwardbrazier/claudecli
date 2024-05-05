@@ -16,7 +16,8 @@ from rich.logging import RichHandler
 from claudecli.printing import print_markdown, console
 from claudecli import save
 from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
-from claudecli.parseaicode import ResponseContent
+from claudecli.parseaicode import CodeResponse
+from claudecli.pure import format_cost
 
 logger = logging.getLogger("rich")
 
@@ -109,6 +110,8 @@ def prompt_user(
     # There are two cases:
     # One is that the user wants the AI to talk to them.
     # The other is that the user wants the AI to send code to some files.
+
+    # The user wants the AI to output code to files
     if user_entry.lower().startswith("/o"):
         # Remove the "/o" from the message
         user_instruction = user_entry[2:].strip()
@@ -129,7 +132,7 @@ def prompt_user(
         ]
 
         messages = conversation_history + new_messages
-        response_content: Optional[ResponseContent] = gather_ai_code_responses(client, model, messages, system_prompt_code)  # type: ignore
+        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, system_prompt_code)  # type: ignore
 
         if response_content is None:
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")
@@ -141,12 +144,14 @@ def prompt_user(
             except Exception as e:
                 console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
 
-            # Remove dummy assistant message from end of conversation log
+            # Remove dummy assistant message from end of conversation history
             conversation_ = messages[:-1]
-            # Add assistant message onto the log
+            # Add assistant message onto the conversation history
             conversation_contents = conversation_ + [
                 {"role": "assistant", "content": response_content.content_string}
             ]
+
+            console.print(format_cost(response_content.usage, model)) # type: ignore
 
             return conversation_contents
     else:
@@ -159,11 +164,15 @@ def prompt_user(
 
         messages = conversation_history + new_messages
 
-        response_string = prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
+        chat_response_optional = prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
 
-        if response_string is None:
+        if chat_response_optional is None:
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")
             return UserPromptOutcome.CONTINUE
         else:
-            print_markdown(console, response_string)
+            print_markdown(console, chat_response_optional.content_string)
+            response_string = chat_response_optional.content_string
+            usage = chat_response_optional.usage
+            console.print()
+            console.print(format_cost(usage, model)) # type: ignore
             return messages + [{"role": "assistant", "content": response_string}]

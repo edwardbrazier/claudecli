@@ -12,7 +12,6 @@ from prompt_toolkit import PromptSession
 from typing import Optional, List
 
 from claudecli.ai_functions import setup_client
-from claudecli import pure
 from claudecli.interact import *
 from claudecli import constants
 from claudecli import load
@@ -151,7 +150,6 @@ def main(
         config["anthropic_model"] = constants.haiku
 
     console.print(f"Model in use: [green bold]{config['anthropic_model']}[/green bold]")
-    console.line()
 
     # Add the system message for code blocks in case markdown is enabled in the config file
     # if config["markdown"]:
@@ -164,6 +162,7 @@ def main(
     # Source code location from command line option
     if sources:        
         if file_extensions is not None and file_extensions != "":
+            console.line()
             console.print(
                 f"Looking only at source files with extensions: [green bold]{file_extensions}[/green bold]"
             )
@@ -196,10 +195,10 @@ def main(
             codebase.concatenated_contents = \
                 f"\n<codebase>\n{codebase.concatenated_contents}\n</codebase>\n"
 
-            # Show the user how big the entire codebase is, in kb. 
-            console.print(
-                f"Codebase size: [green bold]{pure.get_size(codebase.concatenated_contents)}[/green bold]\n"
-            )
+            # # Show the user how big the entire codebase is, in kb. 
+            # console.print(
+            #     f"Codebase size: [green bold]{pure.get_size(codebase.concatenated_contents)}[/green bold]\n"
+            # )
 
 
         # initial_context = codebase.concatenated_contents
@@ -212,21 +211,21 @@ def main(
     try:
         with open(coder_system_prompt, "r") as f:
             system_prompt_code = f.read()
+        
+        console.print(f"Coder System Prompt loaded from [bold green]{coder_system_prompt}[/bold green]")
     except FileNotFoundError:
-        console.print("[bold yellow]Coder System Prompt file not found. Using empty prompt.[/bold yellow]")
+        console.print("Coder System Prompt file not found. Using default.")
         system_prompt_code = ""
 
     try:  
         with open(general_system_prompt, "r") as f:
             system_prompt_general = f.read()
     except FileNotFoundError:
-        console.print("[bold yellow]General System Prompt file not found. Using default prompt.[/bold yellow]")
+        console.print("General System Prompt file not found. Using default.")
 
         system_prompt_general =    "You are a helpful AI assistant which answers questions about programming. " \
                                         "Always use code blocks with the appropriate language tags. " \
                                         "If asked for a table, always format it using Markdown syntax."
-        console.print("[bold yellow]Default General System Prompt:[/bold yellow]")
-        console.print(system_prompt_general)
 
     # # Context from the command line option
     # if context_files:
@@ -274,8 +273,7 @@ def main(
     else:
         output_dir_notnone: str = os.getcwd()
 
-    console.line()
-    console.print(f"Output files will be written to: [bold green]{output_dir_notnone}[/bold green]\n")
+    console.print(f"Code files from the AI will be written to: [bold green]{output_dir_notnone}[/bold green]\n")
 
     client: Client = setup_client(api_key) # type: ignore
 
