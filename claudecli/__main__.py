@@ -185,7 +185,6 @@ def main(
                 else:
                     codebase += new_codebase
 
-                console.line()
             except FileNotFoundError as e:
                 console.print(f"Error reading codebase: {e}")
 
@@ -215,6 +214,8 @@ def main(
             "~/.claudecli_general_system_prompt.txt"
         )
 
+    console.line()
+    
     try:
         with open(coder_system_prompt_user, "r") as f:
             system_prompt_code = f.read()

@@ -114,7 +114,7 @@ def prompt_user(
     # The other is that the user wants the AI to send code to some files.
 
     # The user wants the AI to output code to files
-    if user_entry.lower().startswith("/o"):
+    if user_entry.lower().strip().startswith("/o"):
         # Remove the "/o" from the message
         user_instruction = user_entry[2:].strip()
 
