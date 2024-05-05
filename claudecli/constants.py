@@ -42,7 +42,7 @@ opus = "claude-3-opus-20240229"
 sonnet = "claude-3-sonnet-20240229"
 haiku = "claude-3-haiku-20240307"
 
-coder_system_prompt_hardcoded='''
+coder_system_prompt_hardcoded = '''
 ** Specialised Format **
 
 You are a machine for generating source code by transforming input source code based on natural language instructions. 
@@ -73,7 +73,7 @@ For each code change, first output 5 lines of prior context from the original co
 You don't need to close the tags before you reach your output token limit. I will ask you for a continuation of your response in the next message.
 
 Here is an illustration of the output format that you must use.
-Your output must strictly follow this precise format. However use 'black' style as much as possible in your formatting.
+Your output must strictly follow this precise format. 
 
 <?xml version="1.0" encoding="UTF-8"?>
 <code>
@@ -159,7 +159,6 @@ Here is how it should look when correctly escaped:
 
 Before submitting your response, carefully review your XML output to ensure that all necessary characters have been properly escaped. Remember, unescaped characters will break the XML structure.
 
-** Code style preferences **
 For the structure of your response, here's an example of what not to do:
 <dontdo>
 Here is the updated code with exception handling for parsing the XML response:
@@ -357,4 +356,5 @@ Added a new multiply function that takes two numbers and returns their product.
 </code></assistant>
 </example>
 </examples>
+
 '''

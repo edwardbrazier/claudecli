@@ -56,7 +56,7 @@ def save_ai_output(
     concat_file_path = os.path.join(output_dir, "concatenated_output.txt")
 
     console.print(
-        f"[bold green]Writing complete AI output to {concat_file_path}[/bold green]"
+        f"[bold green]Writing raw AI output to {concat_file_path}[/bold green]"
     )
 
     with open(concat_file_path, "w") as f:
@@ -71,9 +71,7 @@ def save_ai_output(
         console.print("Nil.")
     else:
         for relative_path, _, changes in file_data_list:
-            console.print(
-                f"[bold magenta]- {relative_path}[/bold magenta]"
-            )
+            console.print(f"[bold magenta]- {relative_path}[/bold magenta]")
             console.print(f"[bold green]Changes:[/bold green] {changes}")
 
         write_files(output_dir, file_data_list, force_overwrite)

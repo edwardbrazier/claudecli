@@ -16,6 +16,7 @@ from claudecli.interact import *
 from claudecli import constants
 from claudecli import load
 
+
 @click.command()
 @click.option(
     "-s",
@@ -23,34 +24,34 @@ from claudecli import load
     "sources",
     type=click.Path(exists=True),
     help="Pass an entire codebase to the model as context, from the specified location. "
-         "Repeat this option and its argument any number of times. "
-         "The codebase will only be loaded once. ",
+    "Repeat this option and its argument any number of times. "
+    "The codebase will only be loaded once. ",
     multiple=True,
-    required=False
+    required=False,
 )
 @click.option(
-    "-e", 
-    "--file-extensions", 
+    "-e",
+    "--file-extensions",
     "file_extensions",
     help="File name extensions of files to look at in the codebase, separated by commas without spaces, e.g. py,txt,md "
-         "Only use this option once, even for multiple codebases.",
-    required=False
+    "Only use this option once, even for multiple codebases.",
+    required=False,
 )
 @click.option(
-    "-m", 
-    "--model", 
-    "model", 
+    "-m",
+    "--model",
+    "model",
     help="Set the model. In ascending order of capability, the options are: 'haiku', 'sonnet', 'opus'",
-    required=False
+    required=False,
 )
 @click.option(
-    "-ml", 
-    "--multiline", 
-    "multiline", 
-    is_flag=True, 
+    "-ml",
+    "--multiline",
+    "multiline",
+    is_flag=True,
     help="Use the multiline input mode. "
-         "To submit a multiline input in Bash on Windows, press Escape and then Enter.",
-    required=False
+    "To submit a multiline input in Bash on Windows, press Escape and then Enter.",
+    required=False,
 )
 @click.option(
     "-o",
@@ -58,8 +59,8 @@ from claudecli import load
     "output_dir",
     type=click.Path(exists=True),
     help="The output directory for generated files when using the /o command. "
-        "Defaults to the current working directory.",
-    required=False
+    "Defaults to the current working directory.",
+    required=False,
 )
 @click.option(
     "-f",
@@ -67,33 +68,38 @@ from claudecli import load
     "force",
     is_flag=True,
     help="Force overwrite of output files if they already exist.",
-    required=False
+    required=False,
 )
 @click.option(
     "-csp",
     "--coder-system-prompt",
-    "coder_system_prompt",
+    "coder_system_prompt_user",
     type=click.Path(exists=True),
-    help="Path to the file containing the Coder System Prompt. Defaults to '~/.claudecli_coder_system_prompt.txt'.",
-    required=False
+    help="""
+    Path to the file containing the Coder System Prompt. 
+    Defaults to '~/.claudecli_coder_system_prompt.txt'. 
+    This is additional to a hardcoded coder system prompt which tells Claude how to format its output in XML when it is asked to write code into some files.""",
+    required=False,
 )
 @click.option(
     "-gsp",
     "--general-system-prompt",
     "general_system_prompt",
     type=click.Path(exists=True),
-    help="Path to the file containing the General System Prompt. Defaults to '~/.claudecli_general_system_prompt.txt'.",
-    required=False
+    help="""
+    Path to the file containing the General System Prompt, used when asking for chat-style responses. 
+    Defaults to '~/.claudecli_general_system_prompt.txt'.""",
+    required=False,
 )
 def main(
-    sources: List[str], 
-    model: Optional[str], 
-    multiline: bool, 
-    file_extensions: Optional[str], 
-    output_dir: Optional[str], 
+    sources: List[str],
+    model: Optional[str],
+    multiline: bool,
+    file_extensions: Optional[str],
+    output_dir: Optional[str],
     force: bool,
-    coder_system_prompt: Optional[str],
-    general_system_prompt: Optional[str]
+    coder_system_prompt_user: Optional[str],
+    general_system_prompt: Optional[str],
 ) -> None:
     """
     Command-line interface to the Anthropic Claude AI.
@@ -103,7 +109,7 @@ def main(
     Write '/q' to end the chat.
     Write '/o <instructions>' to ask Claude for code, which the application will output to the selected output directory.
     '<instructions>' represents your instructions to Claude.
-    For example: 
+    For example:
     >>> /o improve the commenting in load.py
     """
 
@@ -115,15 +121,15 @@ def main(
         session: PromptSession[str] = PromptSession()
 
     try:
-        config = load.load_config(logger=logger, config_file=str(constants.CONFIG_FILE)) # type: ignore
+        config = load.load_config(logger=logger, config_file=str(constants.CONFIG_FILE))  # type: ignore
     except FileNotFoundError:
         console.print("[red bold]Configuration file not found[/red bold]")
         sys.exit(1)
 
-    model_mapping: dict[str,str] = {
+    model_mapping: dict[str, str] = {
         "opus": constants.opus,
         "sonnet": constants.sonnet,
-        "haiku": constants.haiku
+        "haiku": constants.haiku,
     }
 
     config["non_interactive"] = False
@@ -139,9 +145,7 @@ def main(
     if model:
         # First check whether the provided model is valid
         if model not in model_mapping:
-            console.print(
-                f"[red bold]Invalid model: {model}[/red bold]"
-            )
+            console.print(f"[red bold]Invalid model: {model}[/red bold]")
             sys.exit(1)
         else:
             model_notnone: str = model_mapping.get(model.lower(), model)
@@ -153,14 +157,14 @@ def main(
 
     # Add the system message for code blocks in case markdown is enabled in the config file
     # if config["markdown"]:
-        # add_markdown_system_message()
+    # add_markdown_system_message()
 
     # initial_context: Optional[str] = None
     codebase: Optional[load.Codebase] = None
     extensions: list[str] = []
 
     # Source code location from command line option
-    if sources:        
+    if sources:
         if file_extensions is not None and file_extensions != "":
             console.line()
             console.print(
@@ -169,9 +173,7 @@ def main(
             extensions = [ext.strip() for ext in file_extensions.split(",")]
 
         for source in sources:
-            console.print(
-                f"Codebase location: [green bold]{source}[/green bold]"
-            )
+            console.print(f"Codebase location: [green bold]{source}[/green bold]")
 
             extensions = []
 
@@ -189,43 +191,52 @@ def main(
 
         if codebase is None:
             console.print(
-                "[red bold]Codebase could not be loaded. Please check the source code location and try again.[/red bold]")
+                "[red bold]Codebase could not be loaded. Please check the source code location and try again.[/red bold]"
+            )
         else:
             # TODO: move this bit to load.py
-            codebase.concatenated_contents = \
+            codebase.concatenated_contents = (
                 f"\n<codebase>\n{codebase.concatenated_contents}\n</codebase>\n"
+            )
 
-            # # Show the user how big the entire codebase is, in kb. 
+            # # Show the user how big the entire codebase is, in kb.
             # console.print(
             #     f"Codebase size: [green bold]{pure.get_size(codebase.concatenated_contents)}[/green bold]\n"
             # )
 
-
         # initial_context = codebase.concatenated_contents
 
-    if coder_system_prompt is None:
-        coder_system_prompt = os.path.expanduser("~/.claudecli_coder_system_prompt.txt")
-    if general_system_prompt is None:  
-        general_system_prompt = os.path.expanduser("~/.claudecli_general_system_prompt.txt")
+    if coder_system_prompt_user is None:
+        coder_system_prompt_user = os.path.expanduser(
+            "~/.claudecli_coder_system_prompt.txt"
+        )
+    if general_system_prompt is None:
+        general_system_prompt = os.path.expanduser(
+            "~/.claudecli_general_system_prompt.txt"
+        )
 
     try:
-        with open(coder_system_prompt, "r") as f:
+        with open(coder_system_prompt_user, "r") as f:
             system_prompt_code = f.read()
-        
-        console.print(f"Coder System Prompt loaded from [bold green]{coder_system_prompt}[/bold green]")
+
+        console.print(
+            f"Coder System Prompt loaded from [bold green]{coder_system_prompt_user}[/bold green]"
+        )
     except FileNotFoundError:
         console.print("Coder System Prompt file not found. Using default.")
         system_prompt_code = ""
 
-    try:  
+    try:
         with open(general_system_prompt, "r") as f:
             system_prompt_general = f.read()
     except FileNotFoundError:
         console.print("General System Prompt file not found. Using default.")
 
-        system_prompt_general =    "You are a helpful AI assistant which answers questions about programming. " \
-                                        "Always use code blocks with the appropriate language tags. " \
-                                        "If asked for a table, always format it using Markdown syntax."
+        system_prompt_general = (
+            "You are a helpful AI assistant which answers questions about programming. "
+            "Always use code blocks with the appropriate language tags. "
+            "If asked for a table, always format it using Markdown syntax."
+        )
 
     # # Context from the command line option
     # if context_files:
@@ -258,14 +269,16 @@ def main(
     #         )
 
     # if not non_interactive:
-        # console.rule()
+    # console.rule()
 
     conversation_history: Optional[ConversationHistory] = []
 
     api_key: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
 
     if api_key is None:
-        console.print("[bold red]Please set the ANTHROPIC_API_KEY environment variable.[/bold red]")
+        console.print(
+            "[bold red]Please set the ANTHROPIC_API_KEY environment variable.[/bold red]"
+        )
         sys.exit(1)
 
     if output_dir is not None:
@@ -273,9 +286,11 @@ def main(
     else:
         output_dir_notnone: str = os.getcwd()
 
-    console.print(f"Code files from the AI will be written to: [bold green]{output_dir_notnone}[/bold green]\n")
+    console.print(
+        f"Code files from the AI will be written to this folder: [bold green]{output_dir_notnone}[/bold green]\n"
+    )
 
-    client: Client = setup_client(api_key) # type: ignore
+    client: Client = setup_client(api_key)  # type: ignore
 
     while True:
         context: Optional[str]
@@ -285,17 +300,17 @@ def main(
         else:
             context = None
 
-        prompt_outcome = \
-            prompt_user(client, # type: ignore
-                        context,
-                        conversation_history, 
-                        session, 
-                        config, 
-                        output_dir_notnone, 
-                        force,
-                        system_prompt_code,
-                        system_prompt_general
-                        )
+        prompt_outcome = prompt_user(
+            client,  # type: ignore
+            context,
+            conversation_history,
+            session,
+            config,
+            output_dir_notnone,
+            force,
+            system_prompt_code,
+            system_prompt_general,
+        )
         if isinstance(prompt_outcome, UserPromptOutcome):
             if prompt_outcome == UserPromptOutcome.CONTINUE:
                 continue
@@ -303,6 +318,7 @@ def main(
                 break
         else:
             conversation_history = prompt_outcome
+
 
 if __name__ == "__main__":
     main()

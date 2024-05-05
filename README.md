@@ -90,7 +90,7 @@ In the above command, the '-s' parameter specifies the codebase to supply to Cla
 Now an example of outputting code from Claude to some files, again starting from the dist/claudecli directory:
 ```
 > mkdir out
-> .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o out -csp ..\..\claudecli\coder_system_prompt.txt
+> .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o out -csp ..\..\claudecli\coder_system_prompt_default.txt
 Model in use: claude-3-haiku-20240307
 
 Looking only at source files with extensions: py,txt

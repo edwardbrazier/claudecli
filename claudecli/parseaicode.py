@@ -8,6 +8,7 @@ class FileData(NamedTuple):
     """
     Represents the data of the files from the AI's response.
     """
+
     relative_path: str
     contents: str
     changes: str
@@ -17,6 +18,7 @@ class ParseResult(NamedTuple):
     """
     Represents the result from attempting to parse a code response from the AI.
     """
+
     finished: bool
     file_data_list: Optional[list[FileData]]
 
@@ -25,23 +27,29 @@ class Usage(NamedTuple):
     """
     Represents the number of tokens used by the model for the input and output.
     """
+
     input_tokens: int
     output_tokens: int
 
     def __repr__(self):
         return f"Input - {self.input_tokens}; Output - {self.output_tokens}"
 
+
 def sum_usages(u1: Usage, u2: Usage):
     """
     Overload the + operator to add two Usage tallies.
     """
-    assert isinstance(u1, Usage) and isinstance(u2, Usage), "Both arguments must be Usage objects"
+    assert isinstance(u1, Usage) and isinstance(
+        u2, Usage
+    ), "Both arguments must be Usage objects"
     return Usage(u1.input_tokens + u2.input_tokens, u1.output_tokens + u2.output_tokens)
+
 
 class CodeResponse(NamedTuple):
     """
     Represents the response from the Anthropic API for a code prompt.
     """
+
     content_string: str
     file_data_list: list[FileData]
     usage: Usage
@@ -51,6 +59,7 @@ class ChatResponse(NamedTuple):
     """
     Represents the response from the Anthropic API for a chat prompt.
     """
+
     content_string: str
     usage: Usage
 
@@ -116,9 +125,11 @@ def process_file_element(file_element: ET.Element) -> Optional[FileData]:
         return FileData(
             path_maybe,
             content_maybe,
-            changes_maybe
-            if changes_maybe is not None
-            else "No change description provided.",
+            (
+                changes_maybe
+                if changes_maybe is not None
+                else "No change description provided."
+            ),
         )
     else:
         print(
@@ -331,7 +342,6 @@ def parse_ai_responses(responses: list[str], force_parse: bool) -> ParseResult:
     finished = contains_stop_signal(concatenated_responses)
 
     if not finished and not force_parse:
-        print("AI has not finished yet. Skipping parsing.")
         return ParseResult(finished, None)
     else:
         file_data_list = process_assistant_response(concatenated_responses)

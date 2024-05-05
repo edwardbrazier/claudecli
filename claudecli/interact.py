@@ -14,6 +14,7 @@ from typing import Optional, Union
 from rich.logging import RichHandler
 
 from claudecli.printing import print_markdown, console
+from claudecli.constants import coder_system_prompt_hardcoded
 from claudecli import save
 from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
 from claudecli.parseaicode import CodeResponse
@@ -62,7 +63,8 @@ def prompt_user(
         config (dict): The configuration dictionary containing settings for the API request.
         output_dir (Optional[str]): The output directory for generated files when using the /o command.
         force_overwrite (bool): Whether to force overwrite of output files if they already exist.
-        system_prompt_code (str): The system prompt to use for code generation.
+        system_prompt_code (str): The user's part of the system prompt to use for code generation,
+                                    additional to the hardcoded coder system prompt.
         system_prompt_general (str): The system prompt to use for general conversation.
 
     Preconditions:
@@ -132,7 +134,7 @@ def prompt_user(
         ]
 
         messages = conversation_history + new_messages
-        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, system_prompt_code)  # type: ignore
+        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + system_prompt_code)  # type: ignore
 
         if response_content is None:
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")
@@ -151,7 +153,7 @@ def prompt_user(
                 {"role": "assistant", "content": response_content.content_string}
             ]
 
-            console.print(format_cost(response_content.usage, model)) # type: ignore
+            console.print(format_cost(response_content.usage, model))  # type: ignore
 
             return conversation_contents
     else:
@@ -174,5 +176,5 @@ def prompt_user(
             response_string = chat_response_optional.content_string
             usage = chat_response_optional.usage
             console.print()
-            console.print(format_cost(usage, model)) # type: ignore
+            console.print(format_cost(usage, model))  # type: ignore
             return messages + [{"role": "assistant", "content": response_string}]

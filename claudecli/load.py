@@ -224,8 +224,12 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     if not matched_files_found:
         raise FileNotFoundError("No matching files found.")
 
-    console.print(f"\tLoaded [green bold]{len(codebase_files)} files[/green bold] from codebase.")
-    console.print(f"\tCodebase size: [green bold]{get_size(concatenated_contents)}[/green bold]")
+    console.print(
+        f"\tLoaded [green bold]{len(codebase_files)} files[/green bold] from codebase."
+    )
+    console.print(
+        f"\tCodebase size: [green bold]{get_size(concatenated_contents)}[/green bold]"
+    )
 
     return Codebase(
         concatenated_contents=concatenated_contents, file_paths=codebase_files

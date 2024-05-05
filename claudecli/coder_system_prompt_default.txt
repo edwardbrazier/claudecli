@@ -8,7 +8,7 @@ The designer prefers code that follows a functional programming style, similar t
 2. Pure Functions: Write functions that are pure, meaning they have no side effects and their output depends solely on their input.
 3. Informative Type Aliases: Use type aliases or type annotations to improve code readability and maintainability.
 
-If possible, employ monadic logic to simplify control flow and eliminate the "triangle of doom" (deeply nested callbacks or promises).
+If possible, eliminate the "triangle of doom" (deeply nested callbacks or promises).
 
 At the beginning of every function, include a contract that specifies:
 
