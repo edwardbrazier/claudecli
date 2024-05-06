@@ -106,11 +106,11 @@ def main(
     Supports chat conversations.
     Also supports code output from Claude to multiple files at once.
 
-    Write '/q' to end the chat.
+    Write '/q' to end the chat.\n
     Write '/o <instructions>' to ask Claude for code, which the application will output to the selected output directory.
     '<instructions>' represents your instructions to Claude.
-    For example:
-    >>> /o improve the commenting in load.py
+    For example:\n
+    >>> /o improve the commenting in load.py\n
     Write '/p <instructions>' to render Claude's response as plain text.
     (This is a workaround in case Claude outputs malformed Markdown.)
     """
