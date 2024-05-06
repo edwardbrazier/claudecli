@@ -108,7 +108,7 @@ def prompt_user(
         return UserPromptOutcome.STOP
     if user_entry.lower() == "":
         return UserPromptOutcome.CONTINUE
-    
+
     render_markdown: bool = True
     user_instruction: str = user_entry
 

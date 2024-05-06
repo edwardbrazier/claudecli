@@ -111,7 +111,7 @@ def main(
     '<instructions>' represents your instructions to Claude.
     For example:
     >>> /o improve the commenting in load.py
-    Write '/p <instructions>' to render Claude's response as plain text. 
+    Write '/p <instructions>' to render Claude's response as plain text.
     (This is a workaround in case Claude outputs malformed Markdown.)
     """
 
@@ -205,7 +205,7 @@ def main(
         )
 
     console.line()
-    
+
     try:
         with open(coder_system_prompt_user, "r") as f:
             system_prompt_code = f.read()

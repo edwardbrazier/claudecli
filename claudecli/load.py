@@ -21,7 +21,7 @@ import os
 import yaml
 
 from pathlib import Path
-from typing import Optional, List
+from typing import List
 
 from claudecli import constants
 from claudecli.printing import console
@@ -119,35 +119,6 @@ def load_history_data(history_file: str) -> dict:  # type: ignore
         content = json.loads(file.read())
 
     return content
-
-
-def get_last_save_file() -> Optional[str]:
-    """
-    Return the timestamp of the last saved session.
-
-    Args:
-        None
-
-    Preconditions:
-        - The SAVE_FOLDER directory exists and contains session history files.
-
-    Side effects:
-        None
-
-    Exceptions:
-        None
-
-    Returns:
-        Optional[str]: The timestamp of the last saved session, or None if no session files exist.
-        Guarantees: The returned value will be a valid timestamp string or None.
-    """
-    files: list[str] = [f for f in os.listdir(str(constants.SAVE_FOLDER)) if f.endswith(".json")]  # type: ignore
-
-    if files:
-        ts = [f.replace("claudecli-session-", "").replace(".json", "") for f in files]  # type: ignore
-        ts.sort()  # type: ignore
-        return ts[-1]  # type: ignore
-    return None
 
 
 def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
