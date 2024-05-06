@@ -16,15 +16,12 @@ def print_markdown(
     Args:
         console (Console): The Rich console instance to use for printing.
         content (str): The markdown content to print.
-        code_blocks (Optional[dict]): An optional dictionary to store code blocks.
 
     Preconditions:
         - The `content` argument must be a valid string containing markdown.
-        - If `code_blocks` is provided, it must be a dictionary.
 
     Side effects:
         - Prints the markdown content to the console.
-        - If `code_blocks` is provided, it will be modified to store any code blocks found in the content.
 
     Exceptions:
         None.

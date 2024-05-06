@@ -111,6 +111,8 @@ def main(
     '<instructions>' represents your instructions to Claude.
     For example:
     >>> /o improve the commenting in load.py
+    Write '/p <instructions>' to render Claude's response as plain text. 
+    (This is a workaround in case Claude outputs malformed Markdown.)
     """
 
     console.print("[bold]ClaudeCLI[/bold]")
@@ -220,12 +222,7 @@ def main(
             system_prompt_general = f.read()
     except FileNotFoundError:
         console.print("General System Prompt file not found. Using default.")
-
-        system_prompt_general = (
-            "You are a helpful AI assistant which answers questions about programming. "
-            "Always use code blocks with the appropriate language tags. "
-            "If asked for a table, always format it using Markdown syntax."
-        )
+        system_prompt_general = constants.general_system_prompt_default
 
     conversation_history: Optional[ConversationHistory] = []
 

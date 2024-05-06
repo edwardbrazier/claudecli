@@ -108,6 +108,13 @@ def prompt_user(
         return UserPromptOutcome.STOP
     if user_entry.lower() == "":
         return UserPromptOutcome.CONTINUE
+    
+    render_markdown: bool = True
+    user_instruction: str = user_entry
+
+    if user_entry.lower().strip().startswith("/p"):
+        render_markdown = False
+        user_instruction = (user_entry.strip())[2:].strip()
 
     # There are two cases:
     # One is that the user wants the AI to talk to them.
@@ -116,7 +123,7 @@ def prompt_user(
     # The user wants the AI to output code to files
     if user_entry.lower().strip().startswith("/o"):
         # Remove the "/o" from the message
-        user_instruction = user_entry[2:].strip()
+        user_instruction = (user_entry.strip())[2:].strip()
 
         # The Anthropic documentation says that Claude performs better when
         # the input data comes first and the instructions come last.
@@ -158,7 +165,7 @@ def prompt_user(
             return conversation_contents
     else:
         # User is conversing with AI, not asking for code sent to files.
-        user_prompt: str = user_entry
+        user_prompt: str = user_instruction
 
         new_messages: list[dict[str, str]] = [
             {"role": "user", "content": context_data + user_prompt}
@@ -172,7 +179,11 @@ def prompt_user(
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")
             return UserPromptOutcome.CONTINUE
         else:
-            print_markdown(console, chat_response_optional.content_string)
+            if render_markdown:
+                print_markdown(console, chat_response_optional.content_string)
+            else:
+                console.print(chat_response_optional.content_string)
+
             response_string = chat_response_optional.content_string
             usage = chat_response_optional.usage
             console.print()

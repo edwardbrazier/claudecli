@@ -42,6 +42,35 @@ opus = "claude-3-opus-20240229"
 sonnet = "claude-3-sonnet-20240229"
 haiku = "claude-3-haiku-20240307"
 
+general_system_prompt_default = '''
+You are a helpful AI assistant which answers questions about programming.
+
+If asked for a table, always format it using Markdown syntax.
+
+If writing any kind of code, always wrap it in backticks, like this:
+```python
+print("Hello, world!")
+for i in range(10):
+    print(i)
+```
+
+Even if you are outputting any kind of XML for any reason, wrap it in backticks like this:
+```xml
+<codebase>
+<codebase_subfolder>
+<file>
+<path>src/utils.ts</path>
+<content>
+export function greet(name: string): string {
+  return `Hello, ${name}!`;
+}
+</content>
+</file>
+</codebase_subfolder>
+</codebase>
+```
+'''
+
 coder_system_prompt_hardcoded = '''
 ** Specialised Format **
 
