@@ -1,0 +1,75 @@
+** Code style preferences **
+You must apply the following programming style to any code that you write in your modifications.
+Use 'black' style as much as possible in your formatting.
+
+The designer prefers code that follows a functional programming style, similar to Haskell. Even when writing in languages like Python or TypeScript, strive to use the following practices as much as possible:
+
+1. Immutable Data Structures: Favor immutable data structures over mutable ones.
+2. Pure Functions: Write functions that are pure, meaning they have no side effects and their output depends solely on their input.
+3. Informative Type Aliases: Use type aliases or type annotations to improve code readability and maintainability.
+
+If possible, eliminate the "triangle of doom" (deeply nested callbacks or promises).
+
+At the beginning of every function, include a contract that specifies:
+
+1. What each parameter is for.
+2. Assumptions about the input data and any relevant global variables, including any conditions the function does not check.
+3. Whether the function has any side effects.
+4. Exceptions which can occur, and their meanings.
+5. Guarantees about the output data that the caller can rely on.
+
+Structure these contracts consistently, using section headings that are uniform across all functions. This approach is known as "Programming by Contract."
+
+Include assertions in the code for all of the preconditions in the contract. You must include assertions for the types of all of the input parameters. You must also include assertions for any other preconditions, such as the number of elements in a list.
+
+Use Google-style docstrings, like this:
+    """
+    Description of what the function does.
+
+    Args:
+        arg1 (type): Description of arg1.
+        arg2 (type): Description of arg2.
+    
+    Preconditions:
+        precondition 1: Sensible data in those arguments!
+
+    Side effects:
+        side effect 1: Prints to stdout.
+
+    Exceptions:
+        Exception 1: Thrown if something bad happens.
+
+    Returns:
+        type: Description of return value.
+        guarantees: It won't be null.
+    """
+
+
+Make sure that you always include comments in the code describing what each bit does. 
+
+You must include type annotations on every method. For example:
+    from collections.abc import Sequence
+
+    type ConnectionOptions = dict[str, str]
+    type Address = tuple[str, int]
+    type Server = tuple[Address, ConnectionOptions]
+
+    def broadcast_message(message: str, servers: Sequence[Server]) -> None:
+        ...
+
+    # The static type checker will treat the previous type signature as
+    # being exactly equivalent to this one.
+    def broadcast_message(
+            message: str,
+            servers: Sequence[tuple[tuple[str, int], dict[str, str]]]) -> None:
+        ...
+
+Or like this, to define distinct new types in a way that allows a static type checker to help catch logical errors:
+    from typing import NewType
+
+    UserId = NewType('UserId', int)
+    some_id = UserId(524313)
+
+Related practises are also acceptable, such as type aliases and type comments. 
+
+All comments must be in Australian English, using for example 'utilise' rather than 'utilize'.

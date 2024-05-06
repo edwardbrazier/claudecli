@@ -15,15 +15,15 @@ import xml.sax.saxutils
 
 from rich.console import Console
 
-from claudecli.ai_functions import ResponseContent
+from claudecli.ai_functions import CodeResponse
 from claudecli.parseaicode import FileData
 
 console = Console()
 
+
 def save_ai_output(
-        response_content: ResponseContent, 
-        output_dir: str, 
-        force_overwrite: bool) -> None:
+    response_content: CodeResponse, output_dir: str, force_overwrite: bool
+) -> None:
     """
     Save the AI's output to files.
 
@@ -46,14 +46,18 @@ def save_ai_output(
     Returns:
         None
     """
-    assert isinstance(response_content, ResponseContent), "response_content must be a ResponseContent object"
+    assert isinstance(
+        response_content, CodeResponse
+    ), "response_content must be a ResponseContent object"
     assert isinstance(output_dir, str), "output_dir must be a string"
     assert isinstance(force_overwrite, bool), "force_overwrite must be a bool"
 
     # Write concatenated output to an xml file in output_dir
     concat_file_path = os.path.join(output_dir, "concatenated_output.txt")
 
-    console.print(f"\n[bold green]Writing complete AI output to {concat_file_path}[/bold green]")
+    console.print(
+        f"[bold green]Writing raw AI output to {concat_file_path}[/bold green]"
+    )
 
     with open(concat_file_path, "w") as f:
         f.write(response_content.content_string)
@@ -67,17 +71,15 @@ def save_ai_output(
         console.print("Nil.")
     else:
         for relative_path, _, changes in file_data_list:
-            console.print(f"[bold magenta]- {relative_path}[/bold magenta]\n[bold green]Changes:[/bold green] {changes}\n")
+            console.print(f"[bold magenta]- {relative_path}[/bold magenta]")
+            console.print(f"[bold green]Changes:[/bold green] {changes}")
 
-        console.print("\n")
+        write_files(output_dir, file_data_list, force_overwrite)
 
-        write_files(output_dir, file_data_list, force_overwrite)    
 
-def write_files( \
-        output_dir: str, \
-        file_data: list[FileData], \
-        force_overwrite: bool = False) \
-        -> None:
+def write_files(
+    output_dir: str, file_data: list[FileData], force_overwrite: bool = False
+) -> None:
     """
     Write the given file data to disk in the specified output directory, regardless of
     its original location.
@@ -104,7 +106,9 @@ def write_files( \
     """
     assert isinstance(output_dir, str), "output_dir must be a string"
     assert isinstance(file_data, list), "file_data must be a list"
-    assert all(isinstance(fd, tuple) and len(fd) == 3 for fd in file_data), "file_data must be a list of tuples with 3 elements"
+    assert all(
+        isinstance(fd, tuple) and len(fd) == 3 for fd in file_data
+    ), "file_data must be a list of tuples with 3 elements"
     assert isinstance(force_overwrite, bool), "force_overwrite must be a bool"
 
     for relative_path, contents, _ in file_data:
@@ -115,13 +119,15 @@ def write_files( \
             os.makedirs(output_dir)
 
         if not force_overwrite and os.path.exists(output_file):
-            console.print(f"[bold yellow]{output_file} already exists. Skipping...[/bold yellow]")
+            console.print(
+                f"[bold yellow]{output_file} already exists. Skipping...[/bold yellow]"
+            )
         else:
             console.print(f"[bold green]Writing to {output_file}...[/bold green]")
-            
+
             # Unescape special characters in the contents before writing to file
             unescaped_contents = xml.sax.saxutils.unescape(contents)
-            
+
             with open(output_file, "w") as f:
                 f.write(unescaped_contents)
                 f.close()

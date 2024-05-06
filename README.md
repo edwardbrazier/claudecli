@@ -91,46 +91,29 @@ Now an example of outputting code from Claude to some files, again starting from
 ```
 > mkdir out
 > .\claudecli.exe -s ..\..\claudecli -e py,txt -m haiku -o out -csp ..\..\claudecli\coder_system_prompt_default.txt
+ClaudeCLI
 Model in use: claude-3-haiku-20240307
 
 Looking only at source files with extensions: py,txt
 Codebase location: ..\..\claudecli
-Loading file: ..\..\claudecli\ai_functions.py
-Loading file: ..\..\claudecli\coder_system_prompt.txt
-Loading file: ..\..\claudecli\constants.py
-Loading file: ..\..\claudecli\interact.py
-Loading file: ..\..\claudecli\load.py
-Loading file: ..\..\claudecli\parseaicode.py
-Loading file: ..\..\claudecli\printing.py
-Loading file: ..\..\claudecli\pure.py
-Loading file: ..\..\claudecli\save.py
-Loading file: ..\..\claudecli\__init__.py
-Loading file: ..\..\claudecli\__main__.py
+        Loaded 11 files from codebase.
+        Codebase size: 67.86 KB
 
-Codebase size: 67.48 KB
-
-General System Prompt file not found. Using default prompt.
-Default General System Prompt:
-You are a helpful AI assistant which answers questions about programming. Always use code blocks with the appropriate
-language tags. If asked for a table, always format it using Markdown syntax.
-
-Output files will be written to: out
+Coder System Prompt loaded from ..\..\claudecli\coder_system_prompt_default.txt
+General System Prompt file not found. Using default.
+Code files from the AI will be written to this folder: out
 
 >>> /o Modify ai_functions.py so that it always uses the opus model.
-Received response.
-
-Writing complete AI output to out\concatenated_output.txt
+Writing raw AI output to out\concatenated_output.txt
 Files included in the result:
 - ..\..\claudecli\ai_functions.py
 Changes:
-Modified the gather_ai_code_responses function to always use the 'opus' model, regardless of the model specified in the
-configuration.
-
-
-
+Modified the gather_ai_code_responses function to always use the 'claude-3-opus-20240229' model, regardless of the
+model specified in the configuration or command line options.
 
 Writing to out\ai_functions.py...
 Finished saving AI output.
+Tokens used in this message: Input - 22988; Output - 2462 Cost: $0.0088 USD
 >>> /q
 > ls out
 
@@ -161,51 +144,6 @@ To get more usage instructions, run:
 > .\claudecli.exe --help
 ```
 
-Here is the output:
-```
-Usage: python -m claudecli [OPTIONS]
-
-  Command-line interface to the Anthropic Claude AI. Supports chat
-  conversations. Also supports code output from Claude to multiple files at
-  once.
-
-  Write '/q' to end the chat. Write '/o <instructions>' to ask Claude for
-  code, which the application will output to the selected output directory.
-  '<instructions>' represents your instructions to Claude. For example:  >>>
-  /o improve the commenting in load.py
-
-Options:
-  -s, --source PATH               Pass an entire codebase to the model as
-                                  context, from the specified location. Repeat
-                                  this option and its argument any number of
-                                  times. The codebase will only be loaded
-                                  once.
-  -e, --file-extensions TEXT      File name extensions of files to look at in
-                                  the codebase, separated by commas without
-                                  spaces, e.g. py,txt,md Only use this option
-                                  once, even for multiple codebases.
-  -m, --model TEXT                Set the model. In ascending order of
-                                  capability, the options are: 'haiku',
-                                  'sonnet', 'opus'
-  -ml, --multiline                Use the multiline input mode. To submit a
-                                  multiline input in Bash on Windows, press
-                                  Escape and then Enter.
-  -o, --output-dir PATH           The output directory for generated files
-                                  when using the /o command. Defaults to the
-                                  current working directory.
-  -f, --force                     Force overwrite of output files if they
-                                  already exist.
-  -csp, --coder-system-prompt PATH
-                                  Path to the file containing the Coder System
-                                  Prompt. Defaults to
-                                  '~/.claudecli_coder_system_prompt.txt'.
-  -gsp, --general-system-prompt PATH
-                                  Path to the file containing the General
-                                  System Prompt. Defaults to
-                                  '~/.claudecli_general_system_prompt.txt'.
-  --help                          Show this message and exit.
-```
-
 ## Multiline input
 
 Add the `--multiline` (or `-ml`) flag in order to toggle multi-line input mode. In this mode use `Alt+Enter` or `Esc+Enter` to submit messages.
@@ -216,7 +154,7 @@ The distinctive feature of ClaudeCLI is that it allows you to put entire codebas
 
 To provide multiple codebases, use the '-s' option multiple times, like this (Powershell):
 ```
-> .\claudecli.exe -s .\codebase1\src -s .\codebase2\src -e py,txt -m haiku -o .\out -csp ..\..\claudecli\coder_system_prompt.txt
+> .\claudecli.exe -s .\codebase1\src -s .\codebase2\src -e py,txt -m haiku -o .\out -csp ..\..\claudecli\coder_system_prompt_default.txt
 ```
 
 ## Markdown rendering
