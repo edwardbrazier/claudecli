@@ -155,11 +155,6 @@ def main(
 
     console.print(f"Model in use: [green bold]{config['anthropic_model']}[/green bold]")
 
-    # Add the system message for code blocks in case markdown is enabled in the config file
-    # if config["markdown"]:
-    # add_markdown_system_message()
-
-    # initial_context: Optional[str] = None
     codebase: Optional[load.Codebase] = None
     extensions: list[str] = []
 
@@ -198,13 +193,6 @@ def main(
                 f"\n<codebase>\n{codebase.concatenated_contents}\n</codebase>\n"
             )
 
-            # # Show the user how big the entire codebase is, in kb.
-            # console.print(
-            #     f"Codebase size: [green bold]{pure.get_size(codebase.concatenated_contents)}[/green bold]\n"
-            # )
-
-        # initial_context = codebase.concatenated_contents
-
     if coder_system_prompt_user is None:
         coder_system_prompt_user = os.path.expanduser(
             "~/.claudecli_coder_system_prompt.txt"
@@ -238,39 +226,6 @@ def main(
             "Always use code blocks with the appropriate language tags. "
             "If asked for a table, always format it using Markdown syntax."
         )
-
-    # # Context from the command line option
-    # if context_files:
-    #     for c in context_files:
-    #         logger.info(
-    #             f"Context file: [green bold]{c.name}", extra={"highlighter": None}
-    #         )
-    #         initial_context = codebase
-    #         messages.append({"role": "user", "content": c.read().strip()})
-
-    # Restore a previous session
-    # if restore:
-    #     if restore == "last":
-    #         last_session = load.get_last_save_file()
-    #         restore_file = f"claudecli-session-{last_session}.json"
-    #     else:
-    #         restore_file = f"claudecli-session-{restore}.json"
-    #     try:
-    #         history_data = load.load_history_data(os.path.join(constants.SAVE_FOLDER, restore_file)) # type: ignore
-    #         for message in history_data["messages"]: #  type: ignore
-    #             messages.append(message) # type: ignore
-
-    #         logger.info(
-    #             f"Restored session: [bold green]{restore}",
-    #             extra={"highlighter": None},
-    #         )
-    #     except FileNotFoundError:
-    #         logger.error(
-    #             f"[red bold]File {restore_file} not found", extra={"highlighter": None}
-    #         )
-
-    # if not non_interactive:
-    # console.rule()
 
     conversation_history: Optional[ConversationHistory] = []
 
