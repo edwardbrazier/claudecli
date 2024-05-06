@@ -208,14 +208,14 @@ def main(
 
     try:
         with open(coder_system_prompt_user, "r") as f:
-            system_prompt_code = f.read()
+            user_system_prompt_code = f.read()
 
         console.print(
             f"Coder System Prompt loaded from [bold green]{coder_system_prompt_user}[/bold green]"
         )
     except FileNotFoundError:
         console.print("Coder System Prompt file not found. Using default.")
-        system_prompt_code = ""
+        user_system_prompt_code = ""
 
     try:
         with open(general_system_prompt, "r") as f:
@@ -261,7 +261,7 @@ def main(
             config,
             output_dir_notnone,
             force,
-            system_prompt_code,
+            user_system_prompt_code,
             system_prompt_general,
         )
         if isinstance(prompt_outcome, UserPromptOutcome):

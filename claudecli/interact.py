@@ -49,7 +49,7 @@ def prompt_user(
     config: dict,  # type: ignore
     output_dir_notnone: str,
     force_overwrite: bool,
-    system_prompt_code: str,
+    user_system_prompt_code: str,
     system_prompt_general: str,
 ) -> PromptOutcome:
     """
@@ -141,7 +141,7 @@ def prompt_user(
         ]
 
         messages = conversation_history + new_messages
-        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + system_prompt_code)  # type: ignore
+        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
 
         if response_content is None:
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")

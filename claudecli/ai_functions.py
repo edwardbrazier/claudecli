@@ -156,8 +156,6 @@ def gather_ai_code_responses(
     ), "messages must be a list of dicts with 'role' and 'content' keys"
     assert isinstance(system_prompt, str), "System prompt must be a string"
 
-    console.print(system_prompt)
-
     responses: list[str] = []
     concatenated_responses: str = ""
     usage_tally = Usage(0, 0)
