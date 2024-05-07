@@ -48,13 +48,13 @@ Haiku is the fastest and cheapest model. Opus is the most capable. Sonnet is in 
 
 Here are some usage examples on Windows in Powershell.
 
-Start from any folder that you have read/write access to.
+Start from a folder which is not your existing project folder.
+First you need [git](https://git-scm.com/downloads).
 
-First a simple, generic example:
+Here is a simple, generic example:
 ```
 > git clone https://github.com/edwardbrazier/claudecli.git
 > cd claudecli
-> mkdir out
 > cd dist\claudecli
 > .\claudecli.exe
 >>> What is the capital of New Zealand?
