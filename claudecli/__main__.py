@@ -172,8 +172,6 @@ def main(
         for source in sources:
             console.print(f"Codebase location: [green bold]{source}[/green bold]")
 
-            extensions = []
-
             try:
                 new_codebase = load.load_codebase(source, extensions)
 
@@ -243,7 +241,7 @@ def main(
         f"Code files from the AI will be written to this folder: [bold green]{output_dir_notnone}[/bold green]\n"
     )
 
-    client: Client = setup_client(api_key)  # type: ignore 
+    client: Client = setup_client(api_key)  # type: ignore
 
     while True:
         context: Optional[str]

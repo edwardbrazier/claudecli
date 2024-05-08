@@ -180,7 +180,7 @@ def prompt_user(
             return UserPromptOutcome.CONTINUE
         else:
             if render_markdown:
-                print_markdown(console, chat_response_optional.content_string)
+                print_markdown(console, chat_response_optional.content_string)  # type: ignore
             else:
                 console.print(chat_response_optional.content_string)
 
