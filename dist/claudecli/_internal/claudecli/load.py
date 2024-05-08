@@ -15,7 +15,6 @@ Functions:
     load_codebase(logger, base_path, extensions)
 """
 
-import json
 import logging
 import os
 import yaml
@@ -95,32 +94,6 @@ def load_config(logger: logging.Logger, config_file: str) -> dict:  # type: igno
     return config
 
 
-def load_history_data(history_file: str) -> dict:  # type: ignore
-    """
-    Read a session history JSON file and return its content.
-
-    Args:
-        history_file (str): Path to the JSON history file.
-
-    Preconditions:
-        - The history_file path is a valid file path.
-
-    Side effects:
-        None
-
-    Exceptions:
-        None
-
-    Returns:
-        dict: The session history data loaded from the JSON file.
-        Guarantees: The returned dictionary will contain the session history data.
-    """
-    with open(history_file, encoding="utf-8") as file:
-        content = json.loads(file.read())
-
-    return content
-
-
 def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     """
     Concatenate the contents of files in the given directory and its subdirectories
@@ -163,15 +136,14 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
 
     # Walk through the directory and subdirectories
     for root, _, files in os.walk(base_path):
-        for file_name in files:
-            if any(file_name.endswith(f".{ext}") for ext in extensions) or not (
-                any(extensions)
-            ):
-                matched_files_found = True
-                file_path = Path(root) / file_name
-                # relative_path = file_path.relative_to(base_path)
+        if "__pycache__" not in root:
+            for file_name in files:
+                if any(file_name.endswith(f".{ext}") for ext in extensions) or not (
+                    any(extensions)
+                ):
+                    matched_files_found = True
+                    file_path = Path(root) / file_name
 
-                if "__pycache__" not in str(file_path):
                     for encoding in encodings:
                         try:
                             with open(file_path, "r", encoding=encoding) as file:
