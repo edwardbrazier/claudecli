@@ -100,11 +100,25 @@ class CodebaseTransformation:
         self.deletions: Set[FilePath] = set()
         self.updates: Set[FileUpdate] = set()
 
-
 class ChangedFiles(NamedTuple):
     file_path: FilePath
     content: str
 
+class CodebaseChangeDescriptive(NamedTuple):
+    """
+    Describes a change to the codebase/s in full detail, suitable for presenting to the user and to the AI.
+    """
+    num_changes: int
+    change_descriptions: str
+    change_contents: str
+
+class CodebaseUpdates(NamedTuple):
+    """
+    Describes everything that the main loop needs to know about the changes 
+    that the codebase watcher has discovered.
+    """
+    updated_codebases: list[CodebaseState]
+    change_descriptive: CodebaseChangeDescriptive
 
 def check_codebase(codebase_location: str, file_extensions: List[str], codebase_state: CodebaseState) -> tuple[CodebaseTransformation, Set[ChangedFiles]]:
     """
@@ -172,7 +186,7 @@ def check_codebase(codebase_location: str, file_extensions: List[str], codebase_
     return transformation, changed_files
 
 
-def check_codebases(codebase_locations: List[str], file_extensions: List[str], codebase_states: List[CodebaseState]) -> tuple[str, str]:
+def check_codebases(codebase_locations: List[str], file_extensions: List[str], codebase_states: List[CodebaseState]) -> CodebaseChangeDescriptive:
     """
     Check multiple codebases for changes and return the change descriptions and file contents.
 
@@ -194,9 +208,7 @@ def check_codebases(codebase_locations: List[str], file_extensions: List[str], c
         None
 
     Returns:
-        tuple[str, str]:
-        - The first element is a string containing the concatenated change descriptions for all codebases.
-        - The second element is a string containing the concatenated contents of added or modified files from all codebases.
+        (todo)
     """
     assert isinstance(codebase_locations, list) and all(isinstance(loc, str) for loc in codebase_locations), "codebase_locations must be a list of strings"
     assert isinstance(file_extensions, list) and all(isinstance(ext, str) for ext in file_extensions), "file_extensions must be a list of strings"
@@ -205,6 +217,7 @@ def check_codebases(codebase_locations: List[str], file_extensions: List[str], c
 
     change_descriptions = ""
     file_contents = ""
+    num_changes: int = 0
 
     for location, state in zip(codebase_locations, codebase_states):
         transformation, changed_files = check_codebase(location, file_extensions, state)
@@ -212,10 +225,12 @@ def check_codebases(codebase_locations: List[str], file_extensions: List[str], c
         change_descriptions += format_transformation(transformation)
         change_descriptions += "\n"
 
+        num_changes += len(changed_files)
+
         for changed_file in changed_files:
             file_contents += f"Contents of file: {changed_file.file_path}\n\n{changed_file.content}\n\n"
 
-    return change_descriptions.strip(), file_contents.strip()
+    return CodebaseChangeDescriptive(num_changes, change_descriptions.strip(), file_contents.strip())
 
 
 def format_transformation(transformation: CodebaseTransformation) -> str:

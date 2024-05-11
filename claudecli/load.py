@@ -29,7 +29,12 @@ from claudecli.codebase_watcher import CodebaseState
 
 
 class Codebase:
-    def __init__(self, concatenated_contents: str, file_paths: list[str], codebase_state: CodebaseState):
+    def __init__(
+        self,
+        concatenated_contents: str,
+        file_paths: list[str],
+        codebase_state: CodebaseState,
+    ):
         self.concatenated_contents = concatenated_contents
         self.file_paths = file_paths
         self.codebase_state = codebase_state
@@ -140,14 +145,19 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     for root, _, files in os.walk(base_path):
         if "__pycache__" not in root:
             for file_name in files:
-                if any(file_name.endswith(f".{ext}") for ext in extensions) or not extensions:
+                if (
+                    any(file_name.endswith(f".{ext}") for ext in extensions)
+                    or not extensions
+                ):
                     file_path_absolute = os.path.join(root, file_name)
                     file_path_relative = os.path.relpath(file_path_absolute, base_path)
 
                     file_loaded = False
                     for encoding in encodings:
                         try:
-                            with open(file_path_absolute, "r", encoding=encoding) as file:
+                            with open(
+                                file_path_absolute, "r", encoding=encoding
+                            ) as file:
                                 contents = file.read()
                                 concatenated_contents += (
                                     f"<file>\n"
@@ -156,14 +166,21 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
                                     f"</file>\n"
                                 )
                                 codebase_files.append(file_path_relative)
-                                codebase_state.add_file(file_path_relative, os.path.getmtime(file_path_absolute))
+                                codebase_state.add_file(
+                                    file_path_relative,
+                                    os.path.getmtime(file_path_absolute),
+                                )
                                 file_loaded = True
                                 break
                         except (OSError, IOError) as e:
-                            console.print(f"Error reading file {file_path_absolute} with encoding {encoding}: {e}")
-                    
+                            console.print(
+                                f"Error reading file {file_path_absolute} with encoding {encoding}: {e}"
+                            )
+
                     if not file_loaded:
-                        console.print(f"Failed to load file {file_path_absolute} with any encoding.")
+                        console.print(
+                            f"Failed to load file {file_path_absolute} with any encoding."
+                        )
 
     concatenated_contents += "</codebase_subfolder>\n"
 
@@ -175,7 +192,7 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     )
 
     return Codebase(
-        concatenated_contents=concatenated_contents, 
+        concatenated_contents=concatenated_contents,
         file_paths=codebase_files,
-        codebase_state=codebase_state
+        codebase_state=codebase_state,
     )

@@ -161,8 +161,8 @@ def main(
 
     codebase: Optional[load.Codebase] = None
     extensions: list[str] = []
-    codebase_locations: List[str] = []
-    codebase_states: List[CodebaseState] = []
+    codebase_locations: list[str] = []
+    codebase_states: list[CodebaseState] = []
 
     # Source code location from command line option
     if sources:
@@ -229,7 +229,7 @@ def main(
         console.print("General System Prompt file not found. Using default.")
         system_prompt_general = constants.general_system_prompt_default
 
-    conversation_history: Optional[ConversationHistory] = []
+    conversation_history: ConversationHistory = []
 
     api_key: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
 
@@ -277,6 +277,9 @@ def main(
                 continue
             else:
                 break
+        if isinstance(prompt_outcome, CodebaseUpdates):
+            codebase_states = prompt_outcome.updated_codebases
+            context += prompt_outcome.change_descriptive
         else:
             conversation_history = prompt_outcome
 

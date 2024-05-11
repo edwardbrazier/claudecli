@@ -20,7 +20,15 @@ from claudecli import save
 from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
 from claudecli.parseaicode import CodeResponse
 from claudecli.pure import format_cost
-from claudecli.codebase_watcher import CodebaseState, CodebaseTransformation, FileUpdate, check_codebase, check_codebases, apply_transformation
+from claudecli.codebase_watcher import (
+    CodebaseUpdates,
+    CodebaseState,
+    CodebaseTransformation,
+    FileUpdate,
+    check_codebase,
+    check_codebases,
+    apply_transformation,
+)
 
 logger = logging.getLogger("rich")
 
@@ -40,7 +48,7 @@ class UserPromptOutcome(Enum):
     STOP = 0
 
 
-PromptOutcome = Union[ConversationHistory, UserPromptOutcome]
+PromptOutcome = Union[ConversationHistory, UserPromptOutcome, CodebaseUpdates]
 
 
 def prompt_user(
@@ -55,7 +63,7 @@ def prompt_user(
     system_prompt_general: str,
     codebase_locations: List[str],
     codebase_states: List[CodebaseState],
-    file_extensions: List[str]
+    file_extensions: List[str],
 ) -> PromptOutcome:
     """
     Ask the user for input, build the request and perform it.
@@ -74,7 +82,7 @@ def prompt_user(
         codebase_locations (List[str]): A list of codebase locations being watched.
         codebase_states (List[CodebaseState]): A list of corresponding codebase states.
         file_extensions (List[str]): A list of file extensions to watch for in the codebase.
-        
+
     Preconditions:
         - The `conversation_history` list is initialized and contains the conversation history.
         - The `console` object is initialized for logging and output.
@@ -125,20 +133,40 @@ def prompt_user(
         user_instruction = (user_entry.strip())[2:].strip()
 
     if user_entry.lower().strip() == "/u":
-        change_descriptions, file_contents = check_codebases(codebase_locations, file_extensions, codebase_states)
-        console.print(change_descriptions)
-        console.print("The contents of these added files and updated files will be prepended to your next message.")
-        context_data = file_contents + "\n\n" + context_data
-        for i in range(len(codebase_locations)):
-            _, changed_files = check_codebase(codebase_locations[i], file_extensions, codebase_states[i])
+        codebase_change_descriptive = check_codebases(
+            codebase_locations, file_extensions, codebase_states
+        )
+
+        if codebase_change_descriptive.num_changes == 0:
+            console.print("None of the files in the codebase have changed. There were no new files with the specified extensions present.")
+        else:
+            console.print(codebase_change_descriptive.change_descriptions)
+            console.print(
+                "The contents of these added files and updated files will be prepended to your next message."
+            )
+        
+        for i, location in zip(range(len(codebase_locations)), codebase_locations):
+            _, changed_files = check_codebase(
+                codebase_locations[i], file_extensions, codebase_states[i]
+            )
             transformation = CodebaseTransformation()
             for file_path, _ in changed_files:
                 if file_path not in codebase_states[i].files:
                     transformation.additions.add(file_path)
                 else:
-                    transformation.updates.add(FileUpdate(file_path, os.path.getmtime(file_path)))
-            codebase_states[i] = apply_transformation(codebase_states[i], transformation)
-        return UserPromptOutcome.CONTINUE
+                    transformation.updates.add(
+                        FileUpdate(
+                            file_path,
+                            os.path.getmtime(os.path.join(location, file_path)),
+                        )
+                    )
+            codebase_states[i] = apply_transformation(
+                codebase_states[i], transformation
+            )
+
+        codebase_updates = CodebaseUpdates(codebase_states, codebase_change_descriptive)
+
+        return codebase_updates
 
     # There are two cases:
     # One is that the user wants the AI to talk to them.
