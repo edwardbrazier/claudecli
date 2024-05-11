@@ -1,5 +1,4 @@
 from typing import List, Set, NamedTuple
-from pathlib import Path
 import os
 
 
@@ -8,12 +7,13 @@ ModificationDate = float
 
 
 class FileUpdate(NamedTuple):
-    file_path: FilePath
+    file_path: FilePath   # This path is always relative to the codebase location.
     last_modified: ModificationDate
 
 
 class CodebaseState:
     def __init__(self):
+        # File paths are always relative to the codebase location.
         self.files: dict[FilePath, ModificationDate] = {}
 
     def add_file(self, file_path: FilePath, last_modified: ModificationDate):
@@ -111,7 +111,7 @@ def check_codebase(codebase_location: str, file_extensions: List[str], codebase_
 
     Args:
         codebase_location (str): The location of the codebase.
-        file_extensions (List[str]): The file extensions to consider.
+        file_extensions (List[str]): The file extensions to consider. (If this is empty, look at files with any extensions.)
         codebase_state (CodebaseState): The current state of the codebase.
 
     Preconditions:
@@ -141,35 +141,39 @@ def check_codebase(codebase_location: str, file_extensions: List[str], codebase_
         if "__pycache__" not in root:
             for file_name in files:
                 if any(file_name.endswith(f".{ext}") for ext in file_extensions) or not file_extensions:
-                    file_path = str(Path(root) / file_name)
-                    if file_path not in codebase_state.files:
-                        transformation.additions.add(file_path)
-                        with open(file_path, "r") as file:
-                            changed_files.add(ChangedFiles(file_path, file.read()))
-                    else:
-                        last_modified = os.path.getmtime(file_path)
-                        if last_modified != codebase_state.files[file_path]:
-                            transformation.updates.add(FileUpdate(file_path, last_modified))
-                            with open(file_path, "r") as file:
-                                changed_files.add(ChangedFiles(file_path, file.read()))
+                    file_path_relative = os.path.relpath(os.path.join(root, file_name), codebase_location)
+                    file_path_absolute = os.path.join(codebase_location, file_path_relative)
 
-    for file_path in codebase_state.files:
-        if not os.path.exists(file_path):
-            transformation.deletions.add(file_path)
+                    if file_path_relative not in codebase_state.files:
+                        transformation.additions.add(file_path_relative)
+                        with open(file_path_absolute, "r") as file:
+                            changed_files.add(ChangedFiles(file_path_relative, file.read()))
+                    else:
+                        last_modified = os.path.getmtime(file_path_absolute)
+                        if last_modified != codebase_state.files[file_path_relative]:
+                            transformation.updates.add(FileUpdate(file_path_relative, last_modified))
+                            with open(file_path_absolute, "r") as file:
+                                changed_files.add(ChangedFiles(file_path_relative, file.read()))
+
+    for file_path_relative in codebase_state.files:
+        if not os.path.exists(os.path.join(codebase_location, file_path_relative)):
+            transformation.deletions.add(file_path_relative)
 
     return transformation, changed_files
 
 
-def check_codebases(codebase_locations: List[str], codebase_states: List[CodebaseState]) -> tuple[str, str]:
+def check_codebases(codebase_locations: List[str], file_extensions: List[str], codebase_states: List[CodebaseState]) -> tuple[str, str]:
     """
     Check multiple codebases for changes and return the change descriptions and file contents.
 
     Args:
         codebase_locations (List[str]): A list of codebase locations.
+        file_extensions (List[str]): A list of file extensions to consider. (If this is empty, look at files with any extensions.)
         codebase_states (List[CodebaseState]): A list of corresponding codebase states.
 
     Preconditions:
         - codebase_locations is a non-empty list of valid directory paths.
+        - file_extensions is a list of valid file extension strings.
         - codebase_states is a list of valid CodebaseState objects.
         - The lengths of codebase_locations and codebase_states are equal.
 
@@ -180,11 +184,12 @@ def check_codebases(codebase_locations: List[str], codebase_states: List[Codebas
         None
 
     Returns:
-        tuple[str, str]: A tuple containing:
-            - The concatenated change descriptions for all codebases.
-            - The concatenated contents of added or modified files from all codebases.
+        tuple[str, str]:
+        - The first element is a string containing the concatenated change descriptions for all codebases.
+        - The second element is a string containing the concatenated contents of added or modified files from all codebases.
     """
     assert isinstance(codebase_locations, list) and all(isinstance(loc, str) for loc in codebase_locations), "codebase_locations must be a list of strings"
+    assert isinstance(file_extensions, list) and all(isinstance(ext, str) for ext in file_extensions), "file_extensions must be a list of strings"
     assert isinstance(codebase_states, list) and all(isinstance(state, CodebaseState) for state in codebase_states), "codebase_states must be a list of CodebaseState objects"
     assert len(codebase_locations) == len(codebase_states), "codebase_locations and codebase_states must have the same length"
 
@@ -192,7 +197,7 @@ def check_codebases(codebase_locations: List[str], codebase_states: List[Codebas
     file_contents = ""
 
     for location, state in zip(codebase_locations, codebase_states):
-        transformation, changed_files = check_codebase(location, [], state)
+        transformation, changed_files = check_codebase(location, file_extensions, state)
         change_descriptions += f"Codebase: {location}\n"
         change_descriptions += format_transformation(transformation)
         change_descriptions += "\n"

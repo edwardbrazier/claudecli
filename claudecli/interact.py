@@ -125,7 +125,7 @@ def prompt_user(
         user_instruction = (user_entry.strip())[2:].strip()
 
     if user_entry.lower().strip() == "/u":
-        change_descriptions, file_contents = check_codebases(codebase_locations, codebase_states)
+        change_descriptions, file_contents = check_codebases(codebase_locations, file_extensions, codebase_states)
         console.print(change_descriptions)
         console.print("The contents of these added files and updated files will be prepended to your next message.")
         context_data = file_contents + "\n\n" + context_data

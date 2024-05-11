@@ -138,33 +138,32 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     codebase_files: list[str] = []
     codebase_state = CodebaseState()
 
-    # Walk through the directory and subdirectories
+    # Walk through the directory and subdirectories recursively
     for root, _, files in os.walk(base_path):
         if "__pycache__" not in root:
             for file_name in files:
-                if any(file_name.endswith(f".{ext}") for ext in extensions) or not (
-                    any(extensions)
-                ):
+                if any(file_name.endswith(f".{ext}") for ext in extensions) or not extensions:
                     matched_files_found = True
-                    file_path = Path(root) / file_name
+                    file_path_absolute = os.path.join(root, file_name)
+                    file_path_relative = os.path.relpath(file_path_absolute, base_path)
 
                     for encoding in encodings:
                         try:
-                            with open(file_path, "r", encoding=encoding) as file:
+                            with open(file_path_absolute, "r", encoding=encoding) as file:
                                 contents = file.read()
                                 concatenated_contents += (
                                     f"<file>\n"
-                                    f"<path>{str(file_path)}</path>\n"
+                                    f"<path>{file_path_relative}</path>\n"
                                     f"<content>{contents}</content>\n"
                                     f"</file>\n"
                                 )
-                                codebase_files.append(str(file_path))
-                                codebase_state.add_file(str(file_path), os.path.getmtime(file_path))
+                                codebase_files.append(file_path_relative)
+                                codebase_state.add_file(file_path_relative, os.path.getmtime(file_path_absolute))
 
                                 break
                         except Exception as e:
                             console.print(
-                                f"Failed to open file {file_path} with encoding {encoding}: {e}"
+                                f"Failed to open file {file_path_absolute} with encoding {encoding}: {e}"
                             )
 
     concatenated_contents += "</codebase_subfolder>\n"
