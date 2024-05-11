@@ -1,6 +1,7 @@
 from typing import List, Set, NamedTuple
 import os
 
+from claudecli.printing import console
 
 FilePath = str
 ModificationDate = float
@@ -144,16 +145,25 @@ def check_codebase(codebase_location: str, file_extensions: List[str], codebase_
                     file_path_relative = os.path.relpath(os.path.join(root, file_name), codebase_location)
                     file_path_absolute = os.path.join(codebase_location, file_path_relative)
 
-                    if file_path_relative not in codebase_state.files:
-                        transformation.additions.add(file_path_relative)
-                        with open(file_path_absolute, "r") as file:
-                            changed_files.add(ChangedFiles(file_path_relative, file.read()))
-                    else:
-                        last_modified = os.path.getmtime(file_path_absolute)
-                        if last_modified != codebase_state.files[file_path_relative]:
-                            transformation.updates.add(FileUpdate(file_path_relative, last_modified))
-                            with open(file_path_absolute, "r") as file:
-                                changed_files.add(ChangedFiles(file_path_relative, file.read()))
+                    try:
+                        if file_path_relative not in codebase_state.files:
+                            transformation.additions.add(file_path_relative)
+                            try:
+                                with open(file_path_absolute, "r") as file:
+                                    changed_files.add(ChangedFiles(file_path_relative, file.read()))
+                            except (OSError, IOError) as e:
+                                console.print(f"Error reading added file {file_path_absolute}: {e}")
+                        else:
+                            last_modified = os.path.getmtime(file_path_absolute)
+                            if last_modified != codebase_state.files[file_path_relative]:
+                                transformation.updates.add(FileUpdate(file_path_relative, last_modified))
+                                try:
+                                    with open(file_path_absolute, "r") as file:
+                                        changed_files.add(ChangedFiles(file_path_relative, file.read()))
+                                except (OSError, IOError) as e:
+                                    console.print(f"Error reading updated file {file_path_absolute}: {e}")
+                    except (OSError, IOError) as e:
+                        console.print(f"Error accessing file {file_path_absolute}: {e}")
 
     for file_path_relative in codebase_state.files:
         if not os.path.exists(os.path.join(codebase_location, file_path_relative)):
@@ -280,12 +290,18 @@ def apply_transformation(codebase_state: CodebaseState, transformation: Codebase
     updated_state.files = codebase_state.files.copy()
 
     for file_path in transformation.additions:
-        updated_state.add_file(file_path, os.path.getmtime(file_path))
+        try:
+            updated_state.add_file(file_path, os.path.getmtime(file_path))
+        except OSError as e:
+            console.print(f"Error getting modification time for {file_path}: {e}")
 
     for file_path in transformation.deletions:
         updated_state.remove_file(file_path)
 
     for file_update in transformation.updates:
-        updated_state.add_file(file_update.file_path, file_update.last_modified)
+        try:
+            updated_state.add_file(file_update.file_path, file_update.last_modified)
+        except OSError as e:
+            console.print(f"Error updating modification time for {file_update.file_path}: {e}")
 
     return updated_state

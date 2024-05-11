@@ -116,7 +116,6 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
 
     Exceptions:
         ValueError: If base_path does not exist or is not a directory.
-        FileNotFoundError: If no matching files are found.
 
     Returns:
         Codebase: A Codebase object containing the concatenated file contents, a list of loaded file paths, and the initial CodebaseState.
@@ -129,7 +128,6 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
         raise ValueError(f"The path {base_path} does not exist or is not a directory.")
 
     concatenated_contents = ""
-    matched_files_found = False
 
     encodings = ["utf-8", "cp1252", "iso-8859-1"]
 
@@ -143,10 +141,10 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
         if "__pycache__" not in root:
             for file_name in files:
                 if any(file_name.endswith(f".{ext}") for ext in extensions) or not extensions:
-                    matched_files_found = True
                     file_path_absolute = os.path.join(root, file_name)
                     file_path_relative = os.path.relpath(file_path_absolute, base_path)
 
+                    file_loaded = False
                     for encoding in encodings:
                         try:
                             with open(file_path_absolute, "r", encoding=encoding) as file:
@@ -159,17 +157,15 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
                                 )
                                 codebase_files.append(file_path_relative)
                                 codebase_state.add_file(file_path_relative, os.path.getmtime(file_path_absolute))
-
+                                file_loaded = True
                                 break
-                        except Exception as e:
-                            console.print(
-                                f"Failed to open file {file_path_absolute} with encoding {encoding}: {e}"
-                            )
+                        except (OSError, IOError) as e:
+                            console.print(f"Error reading file {file_path_absolute} with encoding {encoding}: {e}")
+                    
+                    if not file_loaded:
+                        console.print(f"Failed to load file {file_path_absolute} with any encoding.")
 
     concatenated_contents += "</codebase_subfolder>\n"
-
-    if not matched_files_found:
-        raise FileNotFoundError("No matching files found.")
 
     console.print(
         f"\tLoaded [green bold]{len(codebase_files)} files[/green bold] from codebase."
