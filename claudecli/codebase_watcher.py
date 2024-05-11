@@ -4,12 +4,9 @@ import os
 from claudecli.printing import console
 
 FilePath = str
+CodebaseLocation = str
 ModificationDate = float
 
-
-class FileUpdate(NamedTuple):
-    file_path: FilePath   # This path is always relative to the codebase location.
-    last_modified: ModificationDate
 
 
 class CodebaseState:
@@ -38,7 +35,9 @@ class CodebaseState:
         Returns:
             None
         """
-        assert isinstance(file_path, str) and file_path, "file_path must be a non-empty string"
+        assert (
+            isinstance(file_path, str) and file_path
+        ), "file_path must be a non-empty string"
         assert isinstance(last_modified, float), "last_modified must be a float"
         self.files[file_path] = last_modified
 
@@ -61,7 +60,9 @@ class CodebaseState:
         Returns:
             None
         """
-        assert isinstance(file_path, str) and file_path, "file_path must be a non-empty string"
+        assert (
+            isinstance(file_path, str) and file_path
+        ), "file_path must be a non-empty string"
         if file_path in self.files:
             del self.files[file_path]
 
@@ -83,7 +84,7 @@ class CodebaseState:
 
         Returns:
             CodebaseState: A new `CodebaseState` object containing the combined file paths and timestamps.
-            
+
         Notes:
             - If both `CodebaseState` objects have an entry for the same file path but with different modification dates,
               the modification date from `other` will be used in the combined state.
@@ -93,6 +94,14 @@ class CodebaseState:
         combined_state.files = {**self.files, **other.files}
         return combined_state
 
+class Codebase(NamedTuple):
+    location: CodebaseLocation
+    state: CodebaseState
+
+class FileUpdate(NamedTuple):
+    file_path: FilePath  # This path is always relative to the codebase location.
+    last_modified: ModificationDate
+
 
 class CodebaseTransformation:
     def __init__(self):
@@ -100,29 +109,76 @@ class CodebaseTransformation:
         self.deletions: Set[FilePath] = set()
         self.updates: Set[FileUpdate] = set()
 
-class ChangedFiles(NamedTuple):
-    file_path: FilePath
-    content: str
+def changed_files(transformation: CodebaseTransformation) -> Set[FilePath]:
+    """
+    Gives a list of all files affected by the CodebaseTransformation, as paths relative to the codebase location.
+    """
+    updates: Set[FilePath] = set(f.file_path for f in transformation.updates)
+    return updates.union(transformation.additions).union(transformation.deletions)
+
 
 class CodebaseChangeDescriptive(NamedTuple):
     """
     Describes a change to the codebase/s in full detail, suitable for presenting to the user and to the AI.
     """
-    num_changes: int
-    change_descriptions: str
-    change_contents: str
+
+    change_descriptions: str # Description at the level of file names, not contents.
+    change_contents: str # The contents of the changed files, compiled in an XML format.
+
 
 class CodebaseUpdates(NamedTuple):
     """
-    Describes everything that the main loop needs to know about the changes 
+    Describes everything that the main loop needs to know about the changes
     that the codebase watcher has discovered.
     """
-    updated_codebases: list[CodebaseState]
+
+    codebase_changes: list[CodebaseTransformation]
     change_descriptive: CodebaseChangeDescriptive
 
-def check_codebase(codebase_location: str, file_extensions: List[str], codebase_state: CodebaseState) -> tuple[CodebaseTransformation, Set[ChangedFiles]]:
+def num_affected_files(updates: CodebaseUpdates) -> int:
+    """
+    Returns the number of files affected by the codebase updates.
+    """
+    num_affected = sum([len(t.additions) + len(t.deletions) + len(t.updates) for t in updates.codebase_changes])
+    return num_affected
+
+
+def amend_codebase_records(codebases: list[Codebase], transformations: list[CodebaseTransformation]) -> list[Codebase]:
+    """
+    Apply the given CodebaseTransformations to the corresponding Codebases and return a new list of Codebases.
+
+    Args:
+        codebases (list[Codebase]): The list of Codebases to update.
+        transformations (list[CodebaseTransformation]): The list of CodebaseTransformations to apply.
+
+    Preconditions:
+        - codebases and transformations are non-empty lists of the same length.
+        - Each Codebase in codebases has a corresponding CodebaseTransformation in transformations at the same index.
+
+    Side effects:
+        None
+
+    Exceptions:
+        None
+
+    Returns:
+        list[Codebase]: A new list of Codebases with the transformations applied.
+        guarantees: The original codebases list is not modified.
+    """
+    assert len(codebases) == len(transformations), "codebases and transformations must have the same length"
+    updated_codebases: list[Codebase] = []
+    for codebase, transformation in zip(codebases, transformations):
+        updated_state = apply_transformation(codebase.state, transformation)
+        updated_codebases.append(Codebase(codebase.location, updated_state))
+    return updated_codebases
+
+
+def find_changed_files(
+    codebase_location: str, file_extensions: List[str], codebase_state: CodebaseState
+) -> CodebaseTransformation:
     """
     Check the codebase for changes by comparing the current state with the provided codebase state.
+    Provide the list of changes at the level of filenames, not contents.
 
     Args:
         codebase_location (str): The location of the codebase.
@@ -141,41 +197,46 @@ def check_codebase(codebase_location: str, file_extensions: List[str], codebase_
         None
 
     Returns:
-        tuple[CodebaseTransformation, Set[ChangedFiles]]: A tuple containing:
-            - A CodebaseTransformation object representing the detected changes.
-            - A set of ChangedFiles tuples containing the relative paths and contents of added or modified files.
+        CodebaseTransformation: The transformation representing the changes in the codebase.
     """
-    assert isinstance(codebase_location, str) and codebase_location, "codebase_location must be a non-empty string"
-    assert isinstance(file_extensions, list) and all(isinstance(ext, str) for ext in file_extensions), "file_extensions must be a list of strings"
-    assert isinstance(codebase_state, CodebaseState), "codebase_state must be a CodebaseState object"
+    assert (
+        isinstance(codebase_location, str) and codebase_location
+    ), "codebase_location must be a non-empty string"
+    assert isinstance(file_extensions, list) and all(
+        isinstance(ext, str) for ext in file_extensions
+    ), "file_extensions must be a list of strings"
+    assert isinstance(
+        codebase_state, CodebaseState
+    ), "codebase_state must be a CodebaseState object"
 
     transformation = CodebaseTransformation()
-    changed_files: Set[ChangedFiles] = set()
 
     for root, _, files in os.walk(codebase_location):
         if "__pycache__" not in root:
             for file_name in files:
-                if any(file_name.endswith(f".{ext}") for ext in file_extensions) or not file_extensions:
-                    file_path_relative = os.path.relpath(os.path.join(root, file_name), codebase_location)
-                    file_path_absolute = os.path.join(codebase_location, file_path_relative)
+                if (
+                    any(file_name.endswith(f".{ext}") for ext in file_extensions)
+                    or not file_extensions
+                ):
+                    file_path_relative = os.path.relpath(
+                        os.path.join(root, file_name), codebase_location
+                    )
+                    file_path_absolute = os.path.join(
+                        codebase_location, file_path_relative
+                    )
 
                     try:
                         if file_path_relative not in codebase_state.files:
                             transformation.additions.add(file_path_relative)
-                            try:
-                                with open(file_path_absolute, "r") as file:
-                                    changed_files.add(ChangedFiles(file_path_relative, file.read()))
-                            except (OSError, IOError) as e:
-                                console.print(f"Error reading added file {file_path_absolute}: {e}")
                         else:
                             last_modified = os.path.getmtime(file_path_absolute)
-                            if last_modified != codebase_state.files[file_path_relative]:
-                                transformation.updates.add(FileUpdate(file_path_relative, last_modified))
-                                try:
-                                    with open(file_path_absolute, "r") as file:
-                                        changed_files.add(ChangedFiles(file_path_relative, file.read()))
-                                except (OSError, IOError) as e:
-                                    console.print(f"Error reading updated file {file_path_absolute}: {e}")
+                            if (
+                                last_modified
+                                != codebase_state.files[file_path_relative]
+                            ):
+                                transformation.updates.add(
+                                    FileUpdate(file_path_relative, last_modified)
+                                )
                     except (OSError, IOError) as e:
                         console.print(f"Error accessing file {file_path_absolute}: {e}")
 
@@ -183,10 +244,14 @@ def check_codebase(codebase_location: str, file_extensions: List[str], codebase_
         if not os.path.exists(os.path.join(codebase_location, file_path_relative)):
             transformation.deletions.add(file_path_relative)
 
-    return transformation, changed_files
+    return transformation
 
 
-def check_codebases(codebase_locations: List[str], file_extensions: List[str], codebase_states: List[CodebaseState]) -> CodebaseChangeDescriptive:
+def find_codebase_change_contents(
+    codebase_locations: List[str],
+    file_extensions: List[str],
+    codebase_states: List[CodebaseState],
+) -> CodebaseUpdates:
     """
     Check multiple codebases for changes and return the change descriptions and file contents.
 
@@ -208,29 +273,52 @@ def check_codebases(codebase_locations: List[str], file_extensions: List[str], c
         None
 
     Returns:
-        (todo)
+        CodebaseChangeDescriptive: A CodebaseChangeDescriptive object containing the number of changes, change descriptions, and changed file contents.
     """
-    assert isinstance(codebase_locations, list) and all(isinstance(loc, str) for loc in codebase_locations), "codebase_locations must be a list of strings"
-    assert isinstance(file_extensions, list) and all(isinstance(ext, str) for ext in file_extensions), "file_extensions must be a list of strings"
-    assert isinstance(codebase_states, list) and all(isinstance(state, CodebaseState) for state in codebase_states), "codebase_states must be a list of CodebaseState objects"
-    assert len(codebase_locations) == len(codebase_states), "codebase_locations and codebase_states must have the same length"
+    assert isinstance(codebase_locations, list) and all(
+        isinstance(loc, str) for loc in codebase_locations
+    ), "codebase_locations must be a list of strings"
+    assert isinstance(file_extensions, list) and all(
+        isinstance(ext, str) for ext in file_extensions
+    ), "file_extensions must be a list of strings"
+    assert isinstance(codebase_states, list) and all(
+        isinstance(state, CodebaseState) for state in codebase_states
+    ), "codebase_states must be a list of CodebaseState objects"
+    assert len(codebase_locations) == len(
+        codebase_states
+    ), "codebase_locations and codebase_states must have the same length"
 
     change_descriptions = ""
     file_contents = ""
-    num_changes: int = 0
+    codebase_transformations: list[CodebaseTransformation] = []
 
     for location, state in zip(codebase_locations, codebase_states):
-        transformation, changed_files = check_codebase(location, file_extensions, state)
+        transformation = find_changed_files(location, file_extensions, state)
+        codebase_transformations.append(transformation)
+
         change_descriptions += f"Codebase: {location}\n"
         change_descriptions += format_transformation(transformation)
         change_descriptions += "\n"
 
-        num_changes += len(changed_files)
+        for file_path in transformation.additions:
+            try:
+                with open(os.path.join(location, file_path), "r") as file:
+                    file_contents += f"Contents of added file: {file_path}\n\n{file.read()}\n\n"
+            except (OSError, IOError) as e:
+                console.print(f"Error reading added file {file_path}: {e}")
 
-        for changed_file in changed_files:
-            file_contents += f"Contents of file: {changed_file.file_path}\n\n{changed_file.content}\n\n"
+        for file_update in transformation.updates:
+            try:
+                with open(os.path.join(location, file_update.file_path), "r") as file:
+                    file_contents += f"Contents of updated file: {file_update.file_path}\n\n{file.read()}\n\n"
+            except (OSError, IOError) as e:
+                console.print(f"Error reading updated file {file_update.file_path}: {e}")
 
-    return CodebaseChangeDescriptive(num_changes, change_descriptions.strip(), file_contents.strip())
+    change_descriptive = CodebaseChangeDescriptive(
+        change_descriptions.strip(), file_contents.strip()
+    )
+
+    return CodebaseUpdates(codebase_transformations, change_descriptive)
 
 
 def format_transformation(transformation: CodebaseTransformation) -> str:
@@ -252,7 +340,9 @@ def format_transformation(transformation: CodebaseTransformation) -> str:
     Returns:
         str: The formatted description of the changes.
     """
-    assert isinstance(transformation, CodebaseTransformation), "transformation must be a CodebaseTransformation object"
+    assert isinstance(
+        transformation, CodebaseTransformation
+    ), "transformation must be a CodebaseTransformation object"
 
     description = ""
 
@@ -277,7 +367,9 @@ def format_transformation(transformation: CodebaseTransformation) -> str:
     return description.strip()
 
 
-def apply_transformation(codebase_state: CodebaseState, transformation: CodebaseTransformation) -> CodebaseState:
+def apply_transformation(
+    codebase_state: CodebaseState, transformation: CodebaseTransformation
+) -> CodebaseState:
     """
     Apply a CodebaseTransformation to a CodebaseState and return the updated state.
 
@@ -298,8 +390,12 @@ def apply_transformation(codebase_state: CodebaseState, transformation: Codebase
     Returns:
         CodebaseState: The updated codebase state after applying the transformation.
     """
-    assert isinstance(codebase_state, CodebaseState), "codebase_state must be a CodebaseState object"
-    assert isinstance(transformation, CodebaseTransformation), "transformation must be a CodebaseTransformation object"
+    assert isinstance(
+        codebase_state, CodebaseState
+    ), "codebase_state must be a CodebaseState object"
+    assert isinstance(
+        transformation, CodebaseTransformation
+    ), "transformation must be a CodebaseTransformation object"
 
     updated_state = CodebaseState()
     updated_state.files = codebase_state.files.copy()
@@ -317,6 +413,8 @@ def apply_transformation(codebase_state: CodebaseState, transformation: Codebase
         try:
             updated_state.add_file(file_update.file_path, file_update.last_modified)
         except OSError as e:
-            console.print(f"Error updating modification time for {file_update.file_path}: {e}")
+            console.print(
+                f"Error updating modification time for {file_update.file_path}: {e}"
+            )
 
     return updated_state

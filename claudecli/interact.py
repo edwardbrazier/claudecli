@@ -6,12 +6,11 @@ It allows users to send prompts and receive responses from the AI model.
 
 from enum import Enum
 import logging
-import os
 import sys
 
 import anthropic
 from prompt_toolkit import HTML, PromptSession
-from typing import List, Optional, Union
+from typing import Optional, Union
 from rich.logging import RichHandler
 
 from claudecli.printing import print_markdown, console
@@ -21,13 +20,12 @@ from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
 from claudecli.parseaicode import CodeResponse
 from claudecli.pure import format_cost
 from claudecli.codebase_watcher import (
+    Codebase,
     CodebaseUpdates,
     CodebaseState,
-    CodebaseTransformation,
-    FileUpdate,
-    check_codebase,
-    check_codebases,
-    apply_transformation,
+    amend_codebase_records,
+    find_codebase_change_contents,
+    num_affected_files,
 )
 
 logger = logging.getLogger("rich")
@@ -61,9 +59,8 @@ def prompt_user(
     force_overwrite: bool,
     user_system_prompt_code: str,
     system_prompt_general: str,
-    codebase_locations: List[str],
-    codebase_states: List[CodebaseState],
-    file_extensions: List[str],
+    codebases: list[Codebase],
+    file_extensions: list[str],
 ) -> PromptOutcome:
     """
     Ask the user for input, build the request and perform it.
@@ -74,14 +71,13 @@ def prompt_user(
         conversation_history (ConversationHistory): The history of the conversation so far.
         session (PromptSession): The prompt session object for interactive input.
         config (dict): The configuration dictionary containing settings for the API request.
-        output_dir (Optional[str]): The output directory for generated files when using the /o command.
+        output_dir_notnone (str): The output directory for generated files when using the /o command.
         force_overwrite (bool): Whether to force overwrite of output files if they already exist.
-        system_prompt_code (str): The user's part of the system prompt to use for code generation,
+        user_system_prompt_code (str): The user's part of the system prompt to use for code generation,
                                     additional to the hardcoded coder system prompt.
         system_prompt_general (str): The system prompt to use for general conversation.
-        codebase_locations (List[str]): A list of codebase locations being watched.
-        codebase_states (List[CodebaseState]): A list of corresponding codebase states.
-        file_extensions (List[str]): A list of file extensions to watch for in the codebase.
+        codebases (list[Codebase]): A list of Codebases being watched.
+        file_extensions (list[str]): A list of file extensions to watch for in the codebases.
 
     Preconditions:
         - The `conversation_history` list is initialized and contains the conversation history.
@@ -133,39 +129,20 @@ def prompt_user(
         user_instruction = (user_entry.strip())[2:].strip()
 
     if user_entry.lower().strip() == "/u":
-        codebase_change_descriptive = check_codebases(
-            codebase_locations, file_extensions, codebase_states
-        )
+        codebase_locations: list[str] = [codebase.location for codebase in codebases]
+        codebase_states: list[CodebaseState] = [codebase.state for codebase in codebases]
+        codebase_updates = find_codebase_change_contents(codebase_locations, file_extensions, codebase_states)
 
-        if codebase_change_descriptive.num_changes == 0:
+        if num_affected_files(codebase_updates) == 0: 
             console.print("None of the files in the codebase have changed. There were no new files with the specified extensions present.")
         else:
-            console.print(codebase_change_descriptive.change_descriptions)
+            console.print(codebase_updates.change_descriptive.change_descriptions)
             console.print(
                 "The contents of these added files and updated files will be prepended to your next message."
             )
-        
-        for i, location in zip(range(len(codebase_locations)), codebase_locations):
-            _, changed_files = check_codebase(
-                codebase_locations[i], file_extensions, codebase_states[i]
-            )
-            transformation = CodebaseTransformation()
-            for file_path, _ in changed_files:
-                if file_path not in codebase_states[i].files:
-                    transformation.additions.add(file_path)
-                else:
-                    transformation.updates.add(
-                        FileUpdate(
-                            file_path,
-                            os.path.getmtime(os.path.join(location, file_path)),
-                        )
-                    )
-            codebase_states[i] = apply_transformation(
-                codebase_states[i], transformation
-            )
+            console.print(codebase_updates.change_descriptive.change_contents) # REMOVE LATER. TODO.
 
-        codebase_updates = CodebaseUpdates(codebase_states, codebase_change_descriptive)
-
+        codebases = amend_codebase_records(codebases, codebase_updates.codebase_changes)
         return codebase_updates
 
     # There are two cases:
