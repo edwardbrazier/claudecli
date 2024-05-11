@@ -6,11 +6,12 @@ It allows users to send prompts and receive responses from the AI model.
 
 from enum import Enum
 import logging
+import os
 import sys
 
 import anthropic
 from prompt_toolkit import HTML, PromptSession
-from typing import Optional, Union
+from typing import List, Optional, Union
 from rich.logging import RichHandler
 
 from claudecli.printing import print_markdown, console
@@ -19,6 +20,7 @@ from claudecli import save
 from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
 from claudecli.parseaicode import CodeResponse
 from claudecli.pure import format_cost
+from claudecli.codebase_watcher import CodebaseState, CodebaseTransformation, FileUpdate, check_codebase, check_codebases, apply_transformation
 
 logger = logging.getLogger("rich")
 
@@ -51,6 +53,9 @@ def prompt_user(
     force_overwrite: bool,
     user_system_prompt_code: str,
     system_prompt_general: str,
+    codebase_locations: List[str],
+    codebase_states: List[CodebaseState],
+    file_extensions: List[str]
 ) -> PromptOutcome:
     """
     Ask the user for input, build the request and perform it.
@@ -66,7 +71,10 @@ def prompt_user(
         system_prompt_code (str): The user's part of the system prompt to use for code generation,
                                     additional to the hardcoded coder system prompt.
         system_prompt_general (str): The system prompt to use for general conversation.
-
+        codebase_locations (List[str]): A list of codebase locations being watched.
+        codebase_states (List[CodebaseState]): A list of corresponding codebase states.
+        file_extensions (List[str]): A list of file extensions to watch for in the codebase.
+        
     Preconditions:
         - The `conversation_history` list is initialized and contains the conversation history.
         - The `console` object is initialized for logging and output.
@@ -115,6 +123,22 @@ def prompt_user(
     if user_entry.lower().strip().startswith("/p"):
         render_markdown = False
         user_instruction = (user_entry.strip())[2:].strip()
+
+    if user_entry.lower().strip() == "/u":
+        change_descriptions, file_contents = check_codebases(codebase_locations, codebase_states)
+        console.print(change_descriptions)
+        console.print("The contents of these added files and updated files will be prepended to your next message.")
+        context_data = file_contents + "\n\n" + context_data
+        for i in range(len(codebase_locations)):
+            _, changed_files = check_codebase(codebase_locations[i], file_extensions, codebase_states[i])
+            transformation = CodebaseTransformation()
+            for file_path, _ in changed_files:
+                if file_path not in codebase_states[i].files:
+                    transformation.additions.add(file_path)
+                else:
+                    transformation.updates.add(FileUpdate(file_path, os.path.getmtime(file_path)))
+            codebase_states[i] = apply_transformation(codebase_states[i], transformation)
+        return UserPromptOutcome.CONTINUE
 
     # There are two cases:
     # One is that the user wants the AI to talk to them.
@@ -186,6 +210,5 @@ def prompt_user(
 
             response_string = chat_response_optional.content_string
             usage = chat_response_optional.usage
-            console.print()
             console.print(format_cost(usage, model))  # type: ignore
             return messages + [{"role": "assistant", "content": response_string}]

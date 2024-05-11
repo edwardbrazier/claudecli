@@ -25,12 +25,14 @@ from typing import List
 from claudecli import constants
 from claudecli.printing import console
 from claudecli.pure import get_size
+from claudecli.codebase_watcher import CodebaseState
 
 
 class Codebase:
-    def __init__(self, concatenated_contents: str, file_paths: list[str]):
+    def __init__(self, concatenated_contents: str, file_paths: list[str], codebase_state: CodebaseState):
         self.concatenated_contents = concatenated_contents
         self.file_paths = file_paths
+        self.codebase_state = codebase_state
 
     def __add__(self, other: "Codebase") -> "Codebase":
         """
@@ -46,7 +48,8 @@ class Codebase:
         """
         concatenated_contents = self.concatenated_contents + other.concatenated_contents
         file_paths = self.file_paths + other.file_paths
-        return Codebase(concatenated_contents, file_paths)
+        codebase_state = self.codebase_state + other.codebase_state
+        return Codebase(concatenated_contents, file_paths, codebase_state)
 
     def __str__(self) -> str:
         # Include both the string and the file names.
@@ -116,8 +119,8 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
         FileNotFoundError: If no matching files are found.
 
     Returns:
-        Codebase: A Codebase object containing the concatenated file contents and a list of loaded file paths.
-        guarantees: The returned Codebase object will contain the concatenated file contents and a list of file paths.
+        Codebase: A Codebase object containing the concatenated file contents, a list of loaded file paths, and the initial CodebaseState.
+        guarantees: The returned Codebase object will contain the concatenated file contents, a list of file paths, and the initial CodebaseState.
                     These may be empty.
     """
 
@@ -133,6 +136,7 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     concatenated_contents += "<codebase_subfolder>\n"
 
     codebase_files: list[str] = []
+    codebase_state = CodebaseState()
 
     # Walk through the directory and subdirectories
     for root, _, files in os.walk(base_path):
@@ -155,6 +159,7 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
                                     f"</file>\n"
                                 )
                                 codebase_files.append(str(file_path))
+                                codebase_state.add_file(str(file_path), os.path.getmtime(file_path))
 
                                 break
                         except Exception as e:
@@ -175,5 +180,7 @@ def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
     )
 
     return Codebase(
-        concatenated_contents=concatenated_contents, file_paths=codebase_files
+        concatenated_contents=concatenated_contents, 
+        file_paths=codebase_files,
+        codebase_state=codebase_state
     )

@@ -15,6 +15,7 @@ from claudecli.ai_functions import setup_client
 from claudecli.interact import *
 from claudecli import constants
 from claudecli import load
+from claudecli.codebase_watcher import CodebaseState
 
 
 @click.command()
@@ -113,6 +114,7 @@ def main(
     >>> /o improve the commenting in load.py\n
     Write '/p <instructions>' to render Claude's response as plain text.
     (This is a workaround in case Claude outputs malformed Markdown.)
+    Write '/u' to check for changes in the watched codebases and prepend the contents of added or modified files to the next message.
     """
 
     console.print("[bold]ClaudeCLI[/bold]")
@@ -159,6 +161,8 @@ def main(
 
     codebase: Optional[load.Codebase] = None
     extensions: list[str] = []
+    codebase_locations: List[str] = []
+    codebase_states: List[CodebaseState] = []
 
     # Source code location from command line option
     if sources:
@@ -179,6 +183,9 @@ def main(
                     codebase = new_codebase
                 else:
                     codebase += new_codebase
+
+                codebase_locations.append(source)
+                codebase_states.append(new_codebase.codebase_state)
 
             except FileNotFoundError as e:
                 console.print(f"Error reading codebase: {e}")
@@ -261,6 +268,9 @@ def main(
             force,
             user_system_prompt_code,
             system_prompt_general,
+            codebase_locations,
+            codebase_states,
+            extensions
         )
         if isinstance(prompt_outcome, UserPromptOutcome):
             if prompt_outcome == UserPromptOutcome.CONTINUE:
