@@ -120,7 +120,7 @@ def main(
     console.print("[bold]ClaudeCLI[/bold]")
 
     if multiline:
-        session: PromptSession[str] = PromptSession(multiline=True)
+        session: PromptSession[str] = PromptSession(multiline=True)  # type: ignore
     else:
         session: PromptSession[str] = PromptSession()
 
@@ -256,9 +256,9 @@ def main(
                 Here is the initial codebase. Read it carefully.\n{}\n
                 Changes observed when reloading codebase: \n{}\n
                 """.format(
-                    codebase_initial_contents,
-                    codebase_updates.change_descriptive.change_contents,
-                )
+                codebase_initial_contents,
+                codebase_updates.change_descriptive.change_contents,
+            ) 
             codebases = amend_codebase_records(
                 codebases, codebase_updates.codebase_changes
             )
