@@ -156,7 +156,9 @@ def load_codebase_xml(codebase_locations: List[str], extensions: List[str]) -> s
                         or not extensions
                     ):
                         file_path_absolute = os.path.join(root, file_name)
-                        file_path_relative = os.path.relpath(file_path_absolute, base_path)
+                        file_path_relative = os.path.relpath(
+                            file_path_absolute, base_path
+                        )
 
                         file_loaded = False
                         for encoding in encodings:

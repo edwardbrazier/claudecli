@@ -23,7 +23,6 @@ from claudecli.codebase_watcher import (
     Codebase,
     CodebaseUpdates,
     CodebaseState,
-    amend_codebase_records,
     find_codebase_change_contents,
     num_affected_files,
 )
@@ -51,7 +50,7 @@ PromptOutcome = Union[ConversationHistory, UserPromptOutcome, CodebaseUpdates]
 
 def prompt_user(
     client: anthropic.Client,
-    codebase_xml: Optional[str],
+    context: Optional[str],
     conversation_history: ConversationHistory,
     session: PromptSession[str],
     config: dict,  # type: ignore
@@ -67,7 +66,7 @@ def prompt_user(
 
     Args:
         client (anthropic.Client): The Anthropic client instance.
-        codebase_xml (Optional[str]): The XML representation of the codebase, if provided.
+        context (Optional[str]): The XML representation of the codebase or changes to the codebase, if provided.
         conversation_history (ConversationHistory): The history of the conversation so far.
         session (PromptSession): The prompt session object for interactive input.
         config (dict): The configuration dictionary containing settings for the API request.
@@ -101,11 +100,8 @@ def prompt_user(
     """
     user_entry: str = ""
 
-    if codebase_xml is not None:
-        context_data: str = (
-            "Here is a codebase. Read it carefully, because I want you to work on it.\n\n"
-            "\n\nCodebase:\n" + codebase_xml + "\n\n"
-        )
+    if context is not None:
+        context_data: str = context
     else:
         context_data: str = ""
 
@@ -130,19 +126,21 @@ def prompt_user(
 
     if user_entry.lower().strip() == "/u":
         codebase_locations: list[str] = [codebase.location for codebase in codebases]
-        codebase_states: list[CodebaseState] = [codebase.state for codebase in codebases]
-        codebase_updates = find_codebase_change_contents(codebase_locations, file_extensions, codebase_states)
+        codebase_states: list[CodebaseState] = [
+            codebase.state for codebase in codebases
+        ]
+        codebase_updates: CodebaseUpdates = find_codebase_change_contents(
+            codebase_locations, file_extensions, codebase_states
+        )
 
-        if num_affected_files(codebase_updates) == 0: 
-            console.print("None of the files in the codebase have changed. There were no new files with the specified extensions present.")
+        if num_affected_files(codebase_updates) == 0:
+            console.print("No changes were identified in the codebase.")
         else:
             console.print(codebase_updates.change_descriptive.change_descriptions)
             console.print(
-                "The contents of these added files and updated files will be prepended to your next message."
+                "Details of the changes will be prepended to your next message to the AI."
             )
-            console.print(codebase_updates.change_descriptive.change_contents) # REMOVE LATER. TODO.
 
-        codebases = amend_codebase_records(codebases, codebase_updates.codebase_changes)
         return codebase_updates
 
     # There are two cases:
@@ -216,4 +214,5 @@ def prompt_user(
             response_string = chat_response_optional.content_string
             usage = chat_response_optional.usage
             console.print(format_cost(usage, model))  # type: ignore
-            return messages + [{"role": "assistant", "content": response_string}]
+            chat_history = messages + [{"role": "assistant", "content": response_string}]
+            return chat_history

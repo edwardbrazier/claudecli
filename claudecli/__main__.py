@@ -14,8 +14,8 @@ from typing import Optional, List
 from claudecli.ai_functions import setup_client
 from claudecli.interact import *
 from claudecli import constants
-from claudecli.load import load_codebase_state, load_codebase_xml_, load_config # type: ignore
-from claudecli.codebase_watcher import Codebase
+from claudecli.load import load_codebase_state, load_codebase_xml_, load_config  # type: ignore
+from claudecli.codebase_watcher import Codebase, amend_codebase_records
 
 
 @click.command()
@@ -179,12 +179,16 @@ def main(
             console.print(f"Codebase location: [green bold]{source}[/green bold]")
 
             try:
-                codebases.append(Codebase(source, load_codebase_state(source, extensions)))
+                codebase_state = load_codebase_state(source, extensions)
+                codebases.append(Codebase(source, codebase_state))
+                num_files = len(codebase_state.files)
+                console.print(
+                    "Loaded [green bold]{}[/green bold] files.".format(num_files)
+                )
             except ValueError as e:
                 console.print(f"Error reading codebase: {e}")
 
         codebase_initial_contents = load_codebase_xml_(codebases, extensions)
-
 
     if coder_system_prompt_user is None:
         coder_system_prompt_user = os.path.expanduser(
@@ -240,11 +244,32 @@ def main(
     while True:
         context: Optional[str] = None
 
-        if conversation_history == []:
-            context = codebase_initial_contents
-        elif codebase_updates is not None:
-            context = codebase_updates.change_descriptive.change_contents
-            amend_codebase_records(codebases, codebase_updates.codebase_changes)
+        if conversation_history == [] and codebase_updates is None:
+            context = (
+                "Here is a codebase. Read it carefully.\n\n"
+                "\n\nCodebase:\n" + codebase_initial_contents + "\n\n"
+            )
+        elif conversation_history != [] and codebase_updates is None:
+            context = ""
+        elif conversation_history == [] and codebase_updates is not None:
+            context = """
+                Here is the initial codebase. Read it carefully.\n{}\n
+                Changes observed when reloading codebase: \n{}\n
+                """.format(
+                    codebase_initial_contents,
+                    codebase_updates.change_descriptive.change_contents,
+                )
+            codebases = amend_codebase_records(
+                codebases, codebase_updates.codebase_changes
+            )
+            codebase_updates = None
+        elif conversation_history != [] and codebase_updates is not None:
+            context = "Changes observed when reloading codebase: \n{}".format(
+                codebase_updates.change_descriptive.change_contents
+            )
+            codebases = amend_codebase_records(
+                codebases, codebase_updates.codebase_changes
+            )
             codebase_updates = None
 
         prompt_outcome = prompt_user(
@@ -258,7 +283,7 @@ def main(
             user_system_prompt_code,
             system_prompt_general,
             codebases,
-            extensions
+            extensions,
         )
         if isinstance(prompt_outcome, UserPromptOutcome):
             if prompt_outcome == UserPromptOutcome.CONTINUE:
@@ -268,7 +293,7 @@ def main(
         if isinstance(prompt_outcome, CodebaseUpdates):
             codebase_updates = prompt_outcome
         else:
-            conversation_history = prompt_outcome # type: ignore
+            conversation_history = prompt_outcome  # type: ignore
 
 
 if __name__ == "__main__":
