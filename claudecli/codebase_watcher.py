@@ -185,6 +185,9 @@ def num_affected_files(updates: CodebaseUpdates) -> int:
     return num_affected
 
 
+# TODO: THIS IS WRONG. IT SHOULD ACCEPT A LIST OF TRANSFORMATIONS WHICH IS NOT THE SAME LENGTH AS THE LIST OF CODEBASES.
+# IT SHOULD EVEN ACCEPT MULTIPLE TRANSFORMATIONS IN A ROW TO THE ONE CODEBASE.
+# IT SHOULD ALSO ACCEPT ONE TRANSFORMATION TO ONE CODEBASE, WHEN THERE IS A SECOND CODEBASE IN THE LIST.
 def amend_codebase_records(
     codebases: list[Codebase], transformations: list[CodebaseTransformation]
 ) -> list[Codebase]:

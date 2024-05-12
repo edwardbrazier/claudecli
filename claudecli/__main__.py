@@ -114,7 +114,8 @@ def main(
     >>> /o improve the commenting in load.py\n
     Write '/p <instructions>' to render Claude's response as plain text.
     (This is a workaround in case Claude outputs malformed Markdown.)
-    Write '/u' to check for changes in the watched codebases and prepend the contents of added or modified files to the next message.
+    Write '/u' to check for changes in the watched codebases and prepend the contents of added or modified files to the next message. 
+    (At the moment this only works if there is a single codebase.)
     """
 
     console.print("[bold]ClaudeCLI[/bold]")
@@ -291,6 +292,9 @@ def main(
             else:
                 break
         if isinstance(prompt_outcome, CodebaseUpdates):
+            # TODO: Handle cases where there are multiple updates in a row
+            # in between a pair of messages to the AI.
+            # Need to get both the contents of the files and the descriptions of the changes to the AI in that case.
             codebase_updates = prompt_outcome
         else:
             conversation_history = prompt_outcome  # type: ignore
