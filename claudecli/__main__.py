@@ -20,22 +20,13 @@ from claudecli.codebase_watcher import Codebase, amend_codebase_records
 
 @click.command()
 @click.option(
-    "-f",
-    "--file",
-    "file_paths",
-    type=click.Path(exists=True),
-    help="Pass individual files to the model as context.",
-    multiple=True,
-    required=False,
-)
-@click.option(
     "-s",
     "--source",
     "sources",
     type=click.Path(exists=True),
-    help="Pass an entire codebase to the model as context, from the specified location. "
+    help="Pass files or directories to the model as context. "
     "Repeat this option and its argument any number of times. "
-    "The codebase will only be loaded once. ",
+    "The files and directories will only be loaded once. ",
     multiple=True,
     required=False,
 )
@@ -102,7 +93,6 @@ from claudecli.codebase_watcher import Codebase, amend_codebase_records
     required=False,
 )
 def main(
-    file_paths: list[str],
     sources: list[str],
     model: Optional[str],
     multiline: bool,
@@ -184,35 +174,36 @@ def main(
             )
             extensions = [ext.strip() for ext in file_extensions.split(",")]
 
-        # For each of the sources, confirm that it is a real folder,
-        # see what files are in it and add to the list of codebases.
+        # For each of the sources, determine if it's a file or directory,
+        # load the appropriate codebase state, and add it to the list of codebases.
         for source in sources:
-            console.print(f"Codebase location: [green bold]{source}[/green bold]")
+            if os.path.isfile(source):
+                console.print(f"File location: [green bold]{source}[/green bold]")
 
-            try:
-                codebase_state = load_codebase_state(source, extensions)
-                codebases.append(Codebase(source, codebase_state))
-                num_files = len(codebase_state.files)
-                console.print(
-                    "Loaded [green bold]{}[/green bold] files.".format(num_files)
-                )
-            except ValueError as e:
-                console.print(f"Error reading codebase: {e}")
+                try:
+                    codebase_state = load_codebase_state(source, extensions)
+                    codebases.append(Codebase(source, codebase_state))
+                    console.print("Loaded [green bold]1[/green bold] file.")
+                except ValueError as e:
+                    console.print(f"Error reading file: {e}")
 
-        codebase_initial_contents += load_codebase_xml_(codebases, extensions)
+                codebase_initial_contents += load_file_xml(source)
+            elif os.path.isdir(source):
+                console.print(f"Codebase location: [green bold]{source}[/green bold]")
 
-    if file_paths:
-        for file_path in file_paths:
-            console.print(f"File location: [green bold]{file_path}[/green bold]")
+                try:
+                    codebase_state = load_codebase_state(source, extensions)
+                    codebases.append(Codebase(source, codebase_state))
+                    num_files = len(codebase_state.files)
+                    console.print(
+                        "Loaded [green bold]{}[/green bold] files.".format(num_files)
+                    )
+                except ValueError as e:
+                    console.print(f"Error reading codebase: {e}")
 
-            try:
-                codebase_state = load_codebase_state(file_path, extensions)
-                codebases.append(Codebase(file_path, codebase_state))
-                console.print("Loaded [green bold]1[/green bold] file.")
-            except ValueError as e:
-                console.print(f"Error reading file: {e}")
-
-            codebase_initial_contents += load_file_xml(file_path)
+                codebase_initial_contents += load_codebase_xml_(codebases, extensions)
+            else:
+                console.print(f"[red bold]Invalid source: {source}[/red bold]")
 
     if coder_system_prompt_user is None:
         coder_system_prompt_user = os.path.expanduser(
