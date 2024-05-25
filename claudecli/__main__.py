@@ -92,6 +92,7 @@ from claudecli.codebase_watcher import Codebase, amend_codebase_records
     Defaults to '~/.claudecli_general_system_prompt.txt'.""",
     required=False,
 )
+@click.version_option(version=constants.VERSION, prog_name='claudecli')
 def main(
     sources: list[str],
     model: Optional[str],

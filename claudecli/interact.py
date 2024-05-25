@@ -162,7 +162,7 @@ def prompt_user(
                 # the conversation.
                 "content": context_data
                 + user_instruction
-                + "\nMake sure to escape special characters correctly inside the XML!",
+                + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!",
             },
             {"role": "assistant", "content": '<?xml version="1.0" encoding="UTF-8"?>'},
         ]
