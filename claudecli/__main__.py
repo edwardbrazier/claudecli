@@ -9,16 +9,25 @@ import os
 import sys
 
 from prompt_toolkit import PromptSession
-from typing import Optional, List
+from typing import Optional
 
 from claudecli.ai_functions import setup_client
 from claudecli.interact import *
 from claudecli import constants
-from claudecli.load import load_codebase_state, load_codebase_xml_, load_config  # type: ignore
+from claudecli.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
 from claudecli.codebase_watcher import Codebase, amend_codebase_records
 
 
 @click.command()
+@click.option(
+    "-f",
+    "--file",
+    "file_paths",
+    type=click.Path(exists=True),
+    help="Pass individual files to the model as context.",
+    multiple=True,
+    required=False,
+)
 @click.option(
     "-s",
     "--source",
@@ -93,7 +102,8 @@ from claudecli.codebase_watcher import Codebase, amend_codebase_records
     required=False,
 )
 def main(
-    sources: List[str],
+    file_paths: list[str],
+    sources: list[str],
     model: Optional[str],
     multiline: bool,
     file_extensions: Optional[str],
@@ -189,7 +199,20 @@ def main(
             except ValueError as e:
                 console.print(f"Error reading codebase: {e}")
 
-        codebase_initial_contents = load_codebase_xml_(codebases, extensions)
+        codebase_initial_contents += load_codebase_xml_(codebases, extensions)
+
+    if file_paths:
+        for file_path in file_paths:
+            console.print(f"File location: [green bold]{file_path}[/green bold]")
+
+            try:
+                codebase_state = load_codebase_state(file_path, extensions)
+                codebases.append(Codebase(file_path, codebase_state))
+                console.print("Loaded [green bold]1[/green bold] file.")
+            except ValueError as e:
+                console.print(f"Error reading file: {e}")
+
+            codebase_initial_contents += load_file_xml(file_path)
 
     if coder_system_prompt_user is None:
         coder_system_prompt_user = os.path.expanduser(

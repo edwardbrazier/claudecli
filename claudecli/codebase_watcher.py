@@ -7,7 +7,7 @@ import os
 from claudecli.printing import console
 
 FilePath = str
-CodebaseLocation = str
+CodebaseLocation = str # A CodebaseLocation can be either a file or a folder.
 ModificationDate = float
 
 
