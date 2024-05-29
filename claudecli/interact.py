@@ -19,6 +19,13 @@ from claudecli import save
 from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
 from claudecli.parseaicode import CodeResponse
 from claudecli.pure import format_cost
+from claudecli.codebase_watcher import (
+    Codebase,
+    CodebaseUpdates,
+    CodebaseState,
+    find_codebase_change_contents,
+    num_affected_files,
+)
 
 logger = logging.getLogger("rich")
 
@@ -38,12 +45,12 @@ class UserPromptOutcome(Enum):
     STOP = 0
 
 
-PromptOutcome = Union[ConversationHistory, UserPromptOutcome]
+PromptOutcome = Union[ConversationHistory, UserPromptOutcome, CodebaseUpdates]
 
 
 def prompt_user(
     client: anthropic.Client,
-    codebase_xml: Optional[str],
+    context: Optional[str],
     conversation_history: ConversationHistory,
     session: PromptSession[str],
     config: dict,  # type: ignore
@@ -51,21 +58,25 @@ def prompt_user(
     force_overwrite: bool,
     user_system_prompt_code: str,
     system_prompt_general: str,
+    codebases: list[Codebase],
+    file_extensions: list[str],
 ) -> PromptOutcome:
     """
     Ask the user for input, build the request and perform it.
 
     Args:
         client (anthropic.Client): The Anthropic client instance.
-        codebase_xml (Optional[str]): The XML representation of the codebase, if provided.
+        context (Optional[str]): The XML representation of the codebase or changes to the codebase, if provided.
         conversation_history (ConversationHistory): The history of the conversation so far.
         session (PromptSession): The prompt session object for interactive input.
         config (dict): The configuration dictionary containing settings for the API request.
-        output_dir (Optional[str]): The output directory for generated files when using the /o command.
+        output_dir_notnone (str): The output directory for generated files when using the /o command.
         force_overwrite (bool): Whether to force overwrite of output files if they already exist.
-        system_prompt_code (str): The user's part of the system prompt to use for code generation,
+        user_system_prompt_code (str): The user's part of the system prompt to use for code generation,
                                     additional to the hardcoded coder system prompt.
         system_prompt_general (str): The system prompt to use for general conversation.
+        codebases (list[Codebase]): A list of Codebases being watched.
+        file_extensions (list[str]): A list of file extensions to watch for in the codebases.
 
     Preconditions:
         - The `conversation_history` list is initialized and contains the conversation history.
@@ -89,11 +100,8 @@ def prompt_user(
     """
     user_entry: str = ""
 
-    if codebase_xml is not None:
-        context_data: str = (
-            "Here is a codebase. Read it carefully, because I want you to work on it.\n\n"
-            "\n\nCodebase:\n" + codebase_xml + "\n\n"
-        )
+    if context is not None:
+        context_data: str = context
     else:
         context_data: str = ""
 
@@ -116,6 +124,25 @@ def prompt_user(
         render_markdown = False
         user_instruction = (user_entry.strip())[2:].strip()
 
+    if user_entry.lower().strip() == "/u":
+        codebase_locations: list[str] = [codebase.location for codebase in codebases]
+        codebase_states: list[CodebaseState] = [
+            codebase.state for codebase in codebases
+        ]
+        codebase_updates: CodebaseUpdates = find_codebase_change_contents(
+            codebase_locations, file_extensions, codebase_states
+        )
+
+        if num_affected_files(codebase_updates) == 0:
+            console.print("No changes were identified in the codebase.")
+        else:
+            console.print(codebase_updates.change_descriptive.change_descriptions)
+            console.print(
+                "Details of the changes will be prepended to your next message to the AI."
+            )
+
+        return codebase_updates
+
     # There are two cases:
     # One is that the user wants the AI to talk to them.
     # The other is that the user wants the AI to send code to some files.
@@ -135,7 +162,7 @@ def prompt_user(
                 # the conversation.
                 "content": context_data
                 + user_instruction
-                + "\nMake sure to escape special characters correctly inside the XML!",
+                + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!",
             },
             {"role": "assistant", "content": '<?xml version="1.0" encoding="UTF-8"?>'},
         ]
@@ -186,6 +213,6 @@ def prompt_user(
 
             response_string = chat_response_optional.content_string
             usage = chat_response_optional.usage
-            console.print()
             console.print(format_cost(usage, model))  # type: ignore
-            return messages + [{"role": "assistant", "content": response_string}]
+            chat_history = messages + [{"role": "assistant", "content": response_string}]
+            return chat_history

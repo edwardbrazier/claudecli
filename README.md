@@ -4,9 +4,11 @@
 
 ## Overview
 
-Command line interface to Anthropic's Claude, oriented around programming.
+Command line interface to Anthropic's Claude AI, oriented around programming.
 
 This is a developer tool. The distinctive feature of this tool is that it can put codebases into the context for Claude, so that Claude can see all of your code when giving advice, writing new code and writing modifications to the code. It supports both a chat interface and a command for sending Claude's output into multiple source files.
+
+ClaudeCLI allows the Claude AI to write large amounts of code when the user enters single instruction: If fulfilling the user's instruction requires writing a dozen or more pages of code across a number of files, then ClaudeCLI will interact with Claude multiple times until it has finished.
 
 The author of this tool is not affiliated in any way with Anthropic, which owns the Claude model.
 

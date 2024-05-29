@@ -9,12 +9,13 @@ import os
 import sys
 
 from prompt_toolkit import PromptSession
-from typing import Optional, List
+from typing import Optional
 
 from claudecli.ai_functions import setup_client
 from claudecli.interact import *
 from claudecli import constants
-from claudecli import load
+from claudecli.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
+from claudecli.codebase_watcher import Codebase, amend_codebase_records
 
 
 @click.command()
@@ -23,9 +24,9 @@ from claudecli import load
     "--source",
     "sources",
     type=click.Path(exists=True),
-    help="Pass an entire codebase to the model as context, from the specified location. "
+    help="Pass files or directories to the model as context. "
     "Repeat this option and its argument any number of times. "
-    "The codebase will only be loaded once. ",
+    "The files and directories will only be loaded once. ",
     multiple=True,
     required=False,
 )
@@ -91,8 +92,9 @@ from claudecli import load
     Defaults to '~/.claudecli_general_system_prompt.txt'.""",
     required=False,
 )
+@click.version_option(version=constants.VERSION, prog_name='claudecli')
 def main(
-    sources: List[str],
+    sources: list[str],
     model: Optional[str],
     multiline: bool,
     file_extensions: Optional[str],
@@ -113,17 +115,19 @@ def main(
     >>> /o improve the commenting in load.py\n
     Write '/p <instructions>' to render Claude's response as plain text.
     (This is a workaround in case Claude outputs malformed Markdown.)
+    Write '/u' to check for changes in the watched codebases and prepend the contents of added or modified files to the next message. 
+    (At the moment this only works if there is a single codebase.)
     """
 
     console.print("[bold]ClaudeCLI[/bold]")
 
     if multiline:
-        session: PromptSession[str] = PromptSession(multiline=True)
+        session: PromptSession[str] = PromptSession(multiline=True)  # type: ignore
     else:
         session: PromptSession[str] = PromptSession()
 
     try:
-        config = load.load_config(logger=logger, config_file=str(constants.CONFIG_FILE))  # type: ignore
+        config = load_config(config_file=str(constants.CONFIG_FILE))  # type: ignore
     except FileNotFoundError:
         console.print("[red bold]Configuration file not found[/red bold]")
         sys.exit(1)
@@ -157,11 +161,13 @@ def main(
 
     console.print(f"Model in use: [green bold]{config['anthropic_model']}[/green bold]")
 
-    codebase: Optional[load.Codebase] = None
+    codebases: list[Codebase] = []
+    codebase_initial_contents: str = ""
     extensions: list[str] = []
 
     # Source code location from command line option
     if sources:
+
         if file_extensions is not None and file_extensions != "":
             console.line()
             console.print(
@@ -169,29 +175,36 @@ def main(
             )
             extensions = [ext.strip() for ext in file_extensions.split(",")]
 
+        # For each of the sources, determine if it's a file or directory,
+        # load the appropriate codebase state, and add it to the list of codebases.
         for source in sources:
-            console.print(f"Codebase location: [green bold]{source}[/green bold]")
+            if os.path.isfile(source):
+                console.print(f"File location: [green bold]{source}[/green bold]")
 
-            try:
-                new_codebase = load.load_codebase(source, extensions)
+                try:
+                    codebase_state = load_codebase_state(source, extensions)
+                    codebases.append(Codebase(source, codebase_state))
+                    console.print("Loaded [green bold]1[/green bold] file.")
+                except ValueError as e:
+                    console.print(f"Error reading file: {e}")
 
-                if codebase is None:
-                    codebase = new_codebase
-                else:
-                    codebase += new_codebase
+                codebase_initial_contents += load_file_xml(source)
+            elif os.path.isdir(source):
+                console.print(f"Codebase location: [green bold]{source}[/green bold]")
 
-            except FileNotFoundError as e:
-                console.print(f"Error reading codebase: {e}")
+                try:
+                    codebase_state = load_codebase_state(source, extensions)
+                    codebases.append(Codebase(source, codebase_state))
+                    num_files = len(codebase_state.files)
+                    console.print(
+                        "Loaded [green bold]{}[/green bold] files.".format(num_files)
+                    )
+                except ValueError as e:
+                    console.print(f"Error reading codebase: {e}")
 
-        if codebase is None:
-            console.print(
-                "[red bold]Codebase could not be loaded. Please check the source code location and try again.[/red bold]"
-            )
-        else:
-            # TODO: move this bit to load.py
-            codebase.concatenated_contents = (
-                f"\n<codebase>\n{codebase.concatenated_contents}\n</codebase>\n"
-            )
+                codebase_initial_contents += load_codebase_xml_(codebases, extensions)
+            else:
+                console.print(f"[red bold]Invalid source: {source}[/red bold]")
 
     if coder_system_prompt_user is None:
         coder_system_prompt_user = os.path.expanduser(
@@ -222,7 +235,7 @@ def main(
         console.print("General System Prompt file not found. Using default.")
         system_prompt_general = constants.general_system_prompt_default
 
-    conversation_history: Optional[ConversationHistory] = []
+    conversation_history: ConversationHistory = []
 
     api_key: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
 
@@ -242,14 +255,38 @@ def main(
     )
 
     client: Client = setup_client(api_key)  # type: ignore
+    codebase_updates: Optional[CodebaseUpdates] = None
 
     while True:
-        context: Optional[str]
+        context: Optional[str] = None
 
-        if codebase is not None and conversation_history == []:
-            context = codebase.concatenated_contents
-        else:
-            context = None
+        if conversation_history == [] and codebase_updates is None:
+            context = (
+                "Here is a codebase. Read it carefully.\n\n"
+                "\n\nCodebase:\n" + codebase_initial_contents + "\n\n"
+            )
+        elif conversation_history != [] and codebase_updates is None:
+            context = ""
+        elif conversation_history == [] and codebase_updates is not None:
+            context = """
+                Here is the initial codebase. Read it carefully.\n{}\n
+                Changes observed when reloading codebase: \n{}\n
+                """.format(
+                codebase_initial_contents,
+                codebase_updates.change_descriptive.change_contents,
+            ) 
+            codebases = amend_codebase_records(
+                codebases, codebase_updates.codebase_changes
+            )
+            codebase_updates = None
+        elif conversation_history != [] and codebase_updates is not None:
+            context = "Changes observed when reloading codebase: \n{}".format(
+                codebase_updates.change_descriptive.change_contents
+            )
+            codebases = amend_codebase_records(
+                codebases, codebase_updates.codebase_changes
+            )
+            codebase_updates = None
 
         prompt_outcome = prompt_user(
             client,  # type: ignore
@@ -261,14 +298,21 @@ def main(
             force,
             user_system_prompt_code,
             system_prompt_general,
+            codebases,
+            extensions,
         )
         if isinstance(prompt_outcome, UserPromptOutcome):
             if prompt_outcome == UserPromptOutcome.CONTINUE:
                 continue
             else:
                 break
+        if isinstance(prompt_outcome, CodebaseUpdates):
+            # TODO: Handle cases where there are multiple updates in a row
+            # in between a pair of messages to the AI.
+            # Need to get both the contents of the files and the descriptions of the changes to the AI in that case.
+            codebase_updates = prompt_outcome
         else:
-            conversation_history = prompt_outcome
+            conversation_history = prompt_outcome  # type: ignore
 
 
 if __name__ == "__main__":
