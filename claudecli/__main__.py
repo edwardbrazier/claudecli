@@ -15,6 +15,7 @@ from claudecli.ai_functions import setup_client
 from claudecli.interact import *
 from claudecli import constants
 from claudecli.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
+from claudecli.pure import get_size
 from claudecli.codebase_watcher import Codebase, amend_codebase_records
 
 
@@ -205,6 +206,9 @@ def main(
                 codebase_initial_contents += load_codebase_xml_(codebases, extensions)
             else:
                 console.print(f"[red bold]Invalid source: {source}[/red bold]")
+
+
+    console.print(f"Total size of loaded codebases: [bold green]{get_size(codebase_initial_contents)}[/bold green]")
 
     if coder_system_prompt_user is None:
         coder_system_prompt_user = os.path.expanduser(
