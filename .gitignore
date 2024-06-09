@@ -165,6 +165,8 @@ session-history/
 
 # Aider
 .aider/
+.aiderhistory
+.aiderlog
 
 # JetBrains IDE config files
 .idea/
