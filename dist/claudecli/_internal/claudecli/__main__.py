@@ -172,8 +172,6 @@ def main(
         for source in sources:
             console.print(f"Codebase location: [green bold]{source}[/green bold]")
 
-            extensions = []
-
             try:
                 new_codebase = load.load_codebase(source, extensions)
 
