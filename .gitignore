@@ -163,6 +163,9 @@ cython_debug/
 # Session history
 session-history/
 
+# Aider
+.aider/
+
 # JetBrains IDE config files
 .idea/
 claude-cli.diff
