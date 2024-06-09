@@ -167,6 +167,9 @@ session-history/
 .aider/
 .aiderhistory
 .aiderlog
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache.v3/
 
 # JetBrains IDE config files
 .idea/
