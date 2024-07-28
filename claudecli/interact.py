@@ -14,9 +14,9 @@ from typing import Optional, Union
 from rich.logging import RichHandler
 
 from claudecli.printing import print_markdown, console
-from claudecli.constants import coder_system_prompt_hardcoded
+from claudecli.constants import coder_system_prompt_hardcoded, coder_system_prompt_plaintext
 from claudecli import save
-from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
+from claudecli.ai_functions import gather_ai_code_responses, prompt_ai, get_plaintext_response
 from claudecli.parseaicode import CodeResponse
 from claudecli.pure import format_cost
 from claudecli.codebase_watcher import (
@@ -171,8 +171,32 @@ def prompt_user(
         response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
 
         if response_content is None:
-            console.print("[bold red]Failed to get a response from the AI.[/bold red]")
-            return UserPromptOutcome.CONTINUE
+            console.print("[bold red]Failed to get a validly formatted response from the AI.[/bold red]")
+            console.print("Asking the AI for an alternative response without the XML formatting.")
+            
+            logging.warning("XML parsing failed. Full response content: %s", response_content)
+
+            (plaintext_response_content, usage) = get_plaintext_response(client, model, messages, 
+            coder_system_prompt_plaintext) # type: ignore
+
+            if plaintext_response_content is None or plaintext_response_content.strip() == "":
+                console.print("[bold red]Failed to get a valid response from the AI, even in plaintext format.[/bold red]")
+                return UserPromptOutcome.CONTINUE
+
+            save.save_plaintext_output(plaintext_response_content, output_dir_notnone, force_overwrite)  # type: ignore
+            console.print("[bold yellow]Finished saving plain AI output without XML formatting.[/bold yellow]")
+            console.print("Please note that this output may contain code intended for multiple source files.")
+
+            # Remove dummy assistant message from end of conversation history
+            conversation_ = messages[:-1]
+            # Add assistant message onto the conversation history
+            conversation_contents = conversation_ + [
+                {"role": "assistant", "content": plaintext_response_content}
+            ]
+
+            console.print(format_cost(usage, model))  # type: ignore
+
+            return conversation_contents
         else:
             try:
                 save.save_ai_output(response_content, output_dir_notnone, force_overwrite)  # type: ignore

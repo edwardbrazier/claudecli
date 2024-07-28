@@ -77,6 +77,43 @@ def save_ai_output(
         write_files(output_dir, file_data_list, force_overwrite)
 
 
+def save_plaintext_output(content: str, output_dir: str, force_overwrite: bool) -> None:
+    """
+    Save the AI plaintext output to a file.
+
+    Args:
+        content (str): The text content to save.
+        output_dir (str): The directory where the file will be saved.
+        force_overwrite (bool): If True, overwrites existing file without prompting.
+
+    Side effects:
+        Creates or overwrites a file named 'output.txt' in the specified directory,
+        unless the file exists and force_overwrite is False.
+    """
+
+    assert(isinstance(content, str))
+    assert(isinstance(output_dir, str))
+    assert(isinstance(force_overwrite, bool))
+
+    # Write concatenated output to a file in output_dir
+    file_path = os.path.join(output_dir, "output.txt")
+
+    if not force_overwrite and os.path.exists(file_path):
+        console.print(
+            f"[bold yellow]{file_path} already exists. Skipping.[/bold yellow]"
+        )
+    else:
+        # Write concatenated output to a file in output_dir
+        console.print(
+            f"[bold green]Writing raw AI output to {file_path}[/bold green]"
+        )
+        try:
+            with open(file_path, "w") as f:
+                f.write(content)
+        except IOError as e:
+            console.print(f"[bold red]Error writing to file: {e}[/bold red]")
+
+
 def write_files(
     output_dir: str, file_data: list[FileData], force_overwrite: bool = False
 ) -> None:
