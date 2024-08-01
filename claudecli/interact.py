@@ -170,11 +170,11 @@ def prompt_user(
         messages = conversation_history + new_messages
         response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
 
-        if response_content is None:
+        if response_content is None or response_content.file_data_list == []:
             console.print("[bold red]Failed to get a validly formatted response from the AI.[/bold red]")
             console.print("Asking the AI for an alternative response without the XML formatting.")
             
-            logging.warning("XML parsing failed. Full response content: %s", response_content)
+            # logging.warning("XML parsing failed. Full response content: %s", response_content)
 
             (plaintext_response_content, usage) = get_plaintext_response(client, model, messages, 
             coder_system_prompt_plaintext) # type: ignore
@@ -197,7 +197,7 @@ def prompt_user(
             console.print(format_cost(usage, model))  # type: ignore
 
             return conversation_contents
-        else:
+        else:  # success
             try:
                 save.save_ai_output(response_content, output_dir_notnone, force_overwrite)  # type: ignore
                 console.print("[bold green]Finished saving AI output.[/bold green]")

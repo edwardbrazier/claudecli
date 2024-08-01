@@ -185,3 +185,4 @@ out4/
 buildspec/requirements.txt
 buildspec/chatgpt.spec
 .aider*
+out5/output.txt
