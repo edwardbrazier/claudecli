@@ -93,7 +93,7 @@ It should be escaped like this in the XML output:
 It is crucial that you escape these special characters correctly to ensure the XML output is valid and can be parsed properly.
 If you fail to escape the special characters, then the program will fail entirely (due to a parsing error) and your output will not be useful.
 
-For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. But you must always include prior context. The comment must be formatted in a way that will be recognised in that programming language as a comment.
+For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. But you must always include prior context--at least 5 lines either side. The comment must be formatted in a way that will be recognised in that programming language as a comment.
 
 You don't need to close the tags before you reach your output token limit. I will ask you for a continuation of your response in the next message.
 
@@ -392,7 +392,7 @@ coder_system_prompt_plaintext = '''
 You are a machine for generating source code by transforming input source code based on natural language instructions. 
 Do not output source code for files which you have not modified. Only output source code for files where you are making modifications. 
 
-For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. But you must always include prior context. The comment must be formatted in a way that will be recognised in that programming language as a comment.
+For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. But you must always include prior context--at least 5 lines either side. The comment must be formatted in a way that will be recognised in that programming language as a comment.
 
 Here is an illustration of the output format that you must use.
 Your output must strictly follow this precise format. 
@@ -402,7 +402,7 @@ def foo(x):
     """
     Example function.
     """
-    if x &lt; 5:
+    if x < 5:
         print("x is less than 5")
     else:
         print("x is greater than or equal to 5")

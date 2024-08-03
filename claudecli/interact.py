@@ -14,9 +14,16 @@ from typing import Optional, Union
 from rich.logging import RichHandler
 
 from claudecli.printing import print_markdown, console
-from claudecli.constants import coder_system_prompt_hardcoded, coder_system_prompt_plaintext
+from claudecli.constants import (
+    coder_system_prompt_hardcoded,
+    coder_system_prompt_plaintext,
+)
 from claudecli import save
-from claudecli.ai_functions import gather_ai_code_responses, prompt_ai, get_plaintext_response
+from claudecli.ai_functions import (
+    gather_ai_code_responses,
+    prompt_ai,
+    get_plaintext_response,
+)
 from claudecli.parseaicode import CodeResponse
 from claudecli.pure import format_cost
 from claudecli.codebase_watcher import (
@@ -171,21 +178,37 @@ def prompt_user(
         response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
 
         if response_content is None or response_content.file_data_list == []:
-            console.print("[bold red]Failed to get a validly formatted response from the AI.[/bold red]")
-            console.print("Asking the AI for an alternative response without the XML formatting.")
-            
-            # logging.warning("XML parsing failed. Full response content: %s", response_content)
+            console.print(
+                "[bold red]Failed to get a validly formatted response from the AI.[/bold red]"
+            )
+            console.print(
+                "Asking the AI for an alternative response without the XML formatting."
+            )
 
-            (plaintext_response_content, usage) = get_plaintext_response(client, model, messages, 
-            coder_system_prompt_plaintext) # type: ignore
+            (plaintext_response_content, usage) = get_plaintext_response(
+                client, model, messages, coder_system_prompt_plaintext
+            )  # type: ignore
 
-            if plaintext_response_content is None or plaintext_response_content.strip() == "":
-                console.print("[bold red]Failed to get a valid response from the AI, even in plaintext format.[/bold red]")
+            if (
+                plaintext_response_content is None
+                or plaintext_response_content.strip() == ""
+            ):
+                console.print(
+                    "[bold red]Failed to get a valid response from the AI, even in plaintext format.[/bold red]"
+                )
                 return UserPromptOutcome.CONTINUE
 
-            save.save_plaintext_output(plaintext_response_content, output_dir_notnone, force_overwrite)  # type: ignore
-            console.print("[bold yellow]Finished saving plain AI output without XML formatting.[/bold yellow]")
-            console.print("Please note that this output may contain code intended for multiple source files.")
+            success = save.save_plaintext_output(plaintext_response_content, output_dir_notnone, force_overwrite)  # type: ignore
+            
+            if success:
+                console.print(
+                    "[bold yellow]Finished saving plain AI output without XML formatting.[/bold yellow]"
+                )
+                console.print(
+                    "Please note that this output may contain code intended for multiple source files."
+                )
+            else:
+                console.print("[bold yellow]Something went wrong. Did not write the file.")
 
             # Remove dummy assistant message from end of conversation history
             conversation_ = messages[:-1]
@@ -199,8 +222,8 @@ def prompt_user(
             return conversation_contents
         else:  # success
             try:
-                save.save_ai_output(response_content, output_dir_notnone, force_overwrite)  # type: ignore
-                console.print("[bold green]Finished saving AI output.[/bold green]")
+                num_written = save.save_ai_output(response_content, output_dir_notnone, force_overwrite)  # type: ignore
+                console.print(f"[bold green]Wrote AI output to {num_written} files.[/bold green]")
             except Exception as e:
                 console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
 
@@ -238,5 +261,7 @@ def prompt_user(
             response_string = chat_response_optional.content_string
             usage = chat_response_optional.usage
             console.print(format_cost(usage, model))  # type: ignore
-            chat_history = messages + [{"role": "assistant", "content": response_string}]
+            chat_history = messages + [
+                {"role": "assistant", "content": response_string}
+            ]
             return chat_history

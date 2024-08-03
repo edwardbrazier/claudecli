@@ -23,7 +23,7 @@ console = Console()
 
 def save_ai_output(
     response_content: CodeResponse, output_dir: str, force_overwrite: bool
-) -> None:
+) -> int:
     """
     Save the AI's output to files.
 
@@ -44,7 +44,7 @@ def save_ai_output(
         None.
 
     Returns:
-        None
+        Number of files written.
     """
     assert isinstance(
         response_content, CodeResponse
@@ -74,10 +74,11 @@ def save_ai_output(
             console.print(f"[bold magenta]- {relative_path}[/bold magenta]")
             console.print(f"[bold green]Changes:[/bold green] {changes}")
 
-        write_files(output_dir, file_data_list, force_overwrite)
+        num_written = write_files(output_dir, file_data_list, force_overwrite)
+        return num_written
 
 
-def save_plaintext_output(content: str, output_dir: str, force_overwrite: bool) -> None:
+def save_plaintext_output(content: str, output_dir: str, force_overwrite: bool) -> bool:
     """
     Save the AI plaintext output to a file.
 
@@ -89,6 +90,9 @@ def save_plaintext_output(content: str, output_dir: str, force_overwrite: bool) 
     Side effects:
         Creates or overwrites a file named 'output.txt' in the specified directory,
         unless the file exists and force_overwrite is False.
+    
+    Returns:
+        True if it wrote to a file, otherwise False.
     """
 
     assert(isinstance(content, str))
@@ -110,13 +114,16 @@ def save_plaintext_output(content: str, output_dir: str, force_overwrite: bool) 
         try:
             with open(file_path, "w") as f:
                 f.write(content)
+            return True
         except IOError as e:
             console.print(f"[bold red]Error writing to file: {e}[/bold red]")
+    
+    return False
 
 
 def write_files(
     output_dir: str, file_data: list[FileData], force_overwrite: bool = False
-) -> None:
+) -> int:
     """
     Write the given file data to disk in the specified output directory, regardless of
     its original location.
@@ -138,8 +145,7 @@ def write_files(
         None
 
     Returns:
-        None
-        guarantees: The specified files are written to disk.
+        Number of files written.
     """
     assert isinstance(output_dir, str), "output_dir must be a string"
     assert isinstance(file_data, list), "file_data must be a list"
@@ -147,6 +153,8 @@ def write_files(
         isinstance(fd, tuple) and len(fd) == 3 for fd in file_data
     ), "file_data must be a list of tuples with 3 elements"
     assert isinstance(force_overwrite, bool), "force_overwrite must be a bool"
+
+    num_written: int = 0
 
     for relative_path, contents, _ in file_data:
         file_name = os.path.basename(relative_path)
@@ -167,4 +175,8 @@ def write_files(
 
             with open(output_file, "w") as f:
                 f.write(unescaped_contents)
-                f.close()
+            
+            num_written += 1
+    
+    return num_written
+        

@@ -261,7 +261,7 @@ def get_plaintext_response(
     """
     Gets a single response from the AI, and treats it as plain text.
 
-    
+
     Args:
         client (anthropic.Client): The Anthropic client instance.
         model (str): The name of the AI model to use.
@@ -278,7 +278,7 @@ def get_plaintext_response(
     Side effects:
     - Sends a single request to the Anthropic API.
 
-    
+
     Exceptions:
         - requests.ConnectionError: Raised when there is a connection error with the API.
         - requests.Timeout: Raised when the API request times out.
@@ -297,8 +297,6 @@ def get_plaintext_response(
     ), "messages must be a list of dicts with 'role' and 'content' keys"
     assert isinstance(system_prompt, str), "System prompt must be a string"
 
-    usage_tally = Usage(0, 0)
-
     try:
         response = client.messages.create(
             model=model,
@@ -315,24 +313,19 @@ def get_plaintext_response(
         return None
 
     content = response.content
-    usage_tally = sum_usages(
-        usage_tally,
-        Usage(response.usage.input_tokens, response.usage.output_tokens),
-    )
-
+    usage_tally = Usage(response.usage.input_tokens, response.usage.output_tokens)
     content_string: str = ""
 
     if len(content) == 0:
         print("Received an empty list of contents blocks.")
     else:
         content_block = content[0]
-        content_string: str = content_block.text # type: ignore
+        content_string: str = content_block.text  # type: ignore
 
         if content_string == "":
             console.print("Received an empty response string from AI.")
             return None
 
         return (content_string, usage_tally)
-    
-    return None
 
+    return None
