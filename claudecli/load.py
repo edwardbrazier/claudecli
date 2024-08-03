@@ -105,10 +105,13 @@ def load_codebase_state(base_path: str, extensions: List[str]) -> CodebaseState:
     file_path = base_path
 
     if os.path.isfile(file_path):
-        codebase_state.add_file(
-            os.path.relpath(file_path, os.path.dirname(file_path)),
-            os.path.getmtime(file_path),
-        )
+        try:
+            codebase_state.add_file(
+                os.path.relpath(file_path, os.path.dirname(file_path)),
+                os.path.getmtime(file_path),
+            )
+        except OSError as e:
+            console.print(f"Error accessing file {file_path}: {e}")
 
     # If base_path is a directory, load the codebase from there
     if os.path.isdir(base_path):
@@ -123,10 +126,13 @@ def load_codebase_state(base_path: str, extensions: List[str]) -> CodebaseState:
                         file_path_absolute = os.path.join(root, file_name)
                         file_path_relative = os.path.relpath(file_path_absolute, base_path)
 
-                        codebase_state.add_file(
-                            file_path_relative,
-                            os.path.getmtime(file_path_absolute),
-                        )
+                        try:
+                            codebase_state.add_file(
+                                file_path_relative,
+                                os.path.getmtime(file_path_absolute),
+                            )
+                        except OSError as e:
+                            console.print(f"Error accessing file {file_path_absolute}: {e}")
 
     return codebase_state
 
@@ -168,6 +174,12 @@ def load_file_xml(file_path: str) -> str:
             console.print(
                 f"Error reading file {file_path} with encoding {encoding}: {e}"
             )
+        except UnicodeDecodeError:
+            console.print(
+                f"Failed to decode file {file_path} with encoding {encoding}"
+            )
+        except Exception as e:
+            console.print(f"An unexpected error occurred: {e}")
 
     if not file_loaded:
         console.print(f"Failed to load file {file_path} with any encoding.")
@@ -239,6 +251,12 @@ def load_codebase_xml(codebase_locations: List[str], extensions: List[str]) -> s
                                 console.print(
                                     f"Error reading file {file_path_absolute} with encoding {encoding}: {e}"
                                 )
+                            except UnicodeDecodeError:
+                                console.print(
+                                    f"Failed to decode file {file_path_absolute} with encoding {encoding}"
+                                )
+                            except Exception as e:
+                                console.print(f"An unexpected error occurred: {e}")
 
                         if not file_loaded:
                             console.print(
