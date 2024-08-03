@@ -185,6 +185,8 @@ def prompt_user(
                 "Asking the AI for an alternative response without the XML formatting."
             )
 
+            prefix = "--- file"
+
             new_messages_second_try: list[dict[str, str]] = [
                 {
                     "role": "user",
@@ -194,7 +196,7 @@ def prompt_user(
                     "content": context_data
                     + user_instruction,
                 },
-                {"role": "assistant", "content": "--- file"},
+                {"role": "assistant", "content": prefix},
             ]
 
             messages_second_try = conversation_history + new_messages_second_try
@@ -212,7 +214,8 @@ def prompt_user(
                 )
                 return UserPromptOutcome.CONTINUE
 
-            success = save.save_plaintext_output(plaintext_response_content, output_dir_notnone, force_overwrite)  # type: ignore
+            content = prefix + plaintext_response_content
+            success = save.save_plaintext_output(content, output_dir_notnone, force_overwrite)  # type: ignore
             
             if success:
                 console.print(
