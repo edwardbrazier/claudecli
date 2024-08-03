@@ -194,7 +194,7 @@ def prompt_user(
                     "content": context_data
                     + user_instruction,
                 },
-                {"role": "assistant", "content": "--- file "},
+                {"role": "assistant", "content": "--- file"},
             ]
 
             messages_second_try = conversation_history + new_messages_second_try
