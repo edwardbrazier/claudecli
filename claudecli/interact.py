@@ -161,7 +161,7 @@ def prompt_user(
 
         # The Anthropic documentation says that Claude performs better when
         # the input data comes first and the instructions come last.
-        new_messages: list[dict[str, str]] = [
+        new_messages_first_try: list[dict[str, str]] = [
             {
                 "role": "user",
                 # The following is still ok if context_data is empty,
@@ -174,8 +174,8 @@ def prompt_user(
             {"role": "assistant", "content": '<?xml version="1.0" encoding="UTF-8"?>'},
         ]
 
-        messages = conversation_history + new_messages
-        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
+        messages_first_try = conversation_history + new_messages_first_try
+        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages_first_try, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
 
         if response_content is None or response_content.file_data_list == []:
             console.print(
@@ -185,8 +185,22 @@ def prompt_user(
                 "Asking the AI for an alternative response without the XML formatting."
             )
 
+            new_messages_second_try: list[dict[str, str]] = [
+                {
+                    "role": "user",
+                    # The following is still ok if context_data is empty,
+                    # which should happen if it's not the first turn of
+                    # the conversation.
+                    "content": context_data
+                    + user_instruction,
+                },
+                {"role": "assistant", "content": "--- file "},
+            ]
+
+            messages_second_try = conversation_history + new_messages_second_try
+
             (plaintext_response_content, usage) = get_plaintext_response(
-                client, model, messages, coder_system_prompt_plaintext
+                client, model, messages_second_try, coder_system_prompt_plaintext
             )  # type: ignore
 
             if (
@@ -211,7 +225,7 @@ def prompt_user(
                 console.print("[bold yellow]Something went wrong. Did not write the file.")
 
             # Remove dummy assistant message from end of conversation history
-            conversation_ = messages[:-1]
+            conversation_ = messages_second_try[:-1]
             # Add assistant message onto the conversation history
             conversation_contents = conversation_ + [
                 {"role": "assistant", "content": plaintext_response_content}
@@ -228,7 +242,7 @@ def prompt_user(
                 console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
 
             # Remove dummy assistant message from end of conversation history
-            conversation_ = messages[:-1]
+            conversation_ = messages_first_try[:-1]
             # Add assistant message onto the conversation history
             conversation_contents = conversation_ + [
                 {"role": "assistant", "content": response_content.content_string}
@@ -241,11 +255,11 @@ def prompt_user(
         # User is conversing with AI, not asking for code sent to files.
         user_prompt: str = user_instruction
 
-        new_messages: list[dict[str, str]] = [
+        new_messages_first_try: list[dict[str, str]] = [
             {"role": "user", "content": context_data + user_prompt}
         ]
 
-        messages = conversation_history + new_messages
+        messages = conversation_history + new_messages_first_try
 
         chat_response_optional = prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
 

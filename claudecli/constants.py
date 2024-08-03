@@ -397,7 +397,7 @@ For each code change, first output 5 lines of prior context from the original co
 Here is an illustration of the output format that you must use.
 Your output must strictly follow this precise format. 
 
---- example.py ---
+--- file example.py ---
 def foo(x):
     """
     Example function.
@@ -416,11 +416,11 @@ Changed the threshold to 5.
 
 Another example of how to output code:
 
---- src/utils.ts ---
+--- file src/utils.ts ---
 export function greet(name: string): string {
   return `Hello, ${name}!`;
 }
---- src/index.ts ---
+--- file src/index.ts ---
 import { greet } from './utils';
 
 console.log(greet('World'));
