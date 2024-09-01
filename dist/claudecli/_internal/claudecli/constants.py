@@ -17,6 +17,8 @@ BASE = Path(xdg_config_home(), "claudecli")
 CONFIG_FILE = BASE / "config.yaml"
 ENV_VAR_ANTHROPIC = "ANTHROPIC_API_KEY"
 
+VERSION = "0.0.4"
+
 DEFAULT_CONFIG = {
     "supplier": "anthropic",
     "anthropic-api-key": "<INSERT YOUR ANTHROPIC API KEY HERE>",
@@ -33,7 +35,7 @@ DEFAULT_CONFIG = {
 
 
 opus = "claude-3-opus-20240229"
-sonnet = "claude-3-sonnet-20240229"
+sonnet = "claude-3-5-sonnet-20240620"
 haiku = "claude-3-haiku-20240307"
 
 general_system_prompt_default = '''
@@ -91,7 +93,7 @@ It should be escaped like this in the XML output:
 It is crucial that you escape these special characters correctly to ensure the XML output is valid and can be parsed properly.
 If you fail to escape the special characters, then the program will fail entirely (due to a parsing error) and your output will not be useful.
 
-For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. But you must always include prior context. The comment must be formatted in a way that will be recognised in that programming language as a comment.
+For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. But you must always include prior context--at least 5 lines either side. The comment must be formatted in a way that will be recognised in that programming language as a comment.
 
 You don't need to close the tags before you reach your output token limit. I will ask you for a continuation of your response in the next message.
 
@@ -116,7 +118,7 @@ def bar(y):
     # ---- Remaining code unchanged. ----
     </content>
     <changes>
-    Escaped the less than (&lt;) character in the if statement condition.
+    Changed the threshold to 5.
     </changes>
   </file>
 </code>
@@ -380,4 +382,49 @@ Added a new multiply function that takes two numbers and returns their product.
 </example>
 </examples>
 
+'''
+
+# This one is for code output to a text file without the XML formatting
+# that allows the parser to divide up the code into different source files.
+coder_system_prompt_plaintext = '''
+** Specialised Format **
+
+You are a machine for generating source code by transforming input source code based on natural language instructions. 
+Do not output source code for files which you have not modified. Only output source code for files where you are making modifications. 
+
+For each code change, first output 5 lines of prior context from the original code, then write your modified code, and finally write five lines of following context from the original source file. In between each block of context and changes, you should include a comment saying that the remaining code is unchanged. But you must always include prior context--at least 5 lines either side. The comment must be formatted in a way that will be recognised in that programming language as a comment.
+
+Here is an illustration of the output format that you must use.
+Your output must strictly follow this precise format. 
+
+--- file example.py ---
+def foo(x):
+    """
+    Example function.
+    """
+    if x < 5:
+        print("x is less than 5")
+    else:
+        print("x is greater than or equal to 5")
+
+def bar(y):
+    # ---- Remaining code unchanged. ----
+
+--- changes ---
+Changed the threshold to 5.
+--- end ---
+
+Another example of how to output code:
+
+--- file src/utils.ts ---
+export function greet(name: string): string {
+  return `Hello, ${name}!`;
+}
+--- file src/index.ts ---
+import { greet } from './utils';
+
+console.log(greet('World'));
+--- changes ---
+Added a new greeting function
+--- end ---
 '''

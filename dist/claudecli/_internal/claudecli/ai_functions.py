@@ -82,6 +82,7 @@ def prompt_ai(
             temperature=0,
             messages=messages,  # type: ignore
             system=system_prompt,
+            extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"}
         )
     except requests.ConnectionError:
         console.print("[red bold]Connection error, try again...[/red bold]")
@@ -110,7 +111,7 @@ def prompt_ai(
         else:
             return ChatResponse(
                 content_string=content_string,
-                usage=Usage(response.usage.input_tokens, response.usage.output_tokens),
+                usage=Usage(response.usage.input_tokens, response.usage.cache_creation_input_tokens, response.usage.cache_read_input_tokens, response.usage.output_tokens),
             )
 
 
@@ -158,7 +159,7 @@ def gather_ai_code_responses(
 
     responses: list[str] = []
     concatenated_responses: str = ""
-    usage_tally = Usage(0, 0)
+    usage_tally = Usage(0, 0, 0, 0)
     finished = False
     max_turns = 10
     separator = "\n-------------------------------\n"
@@ -171,6 +172,7 @@ def gather_ai_code_responses(
                 temperature=0.0,
                 messages=messages,  # type: ignore
                 system=system_prompt,
+                extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"}
             )
         except requests.ConnectionError:
             print("[red bold]Connection error, try again...[/red bold]")
@@ -182,7 +184,7 @@ def gather_ai_code_responses(
         content = response.content
         usage_tally = sum_usages(
             usage_tally,
-            Usage(response.usage.input_tokens, response.usage.output_tokens),
+            Usage(response.usage.input_tokens, response.usage.cache_creation_input_tokens, response.usage.cache_read_input_tokens, response.usage.output_tokens),
         )
 
         content_string: str = ""
@@ -248,5 +250,85 @@ def gather_ai_code_responses(
     print("[bold yellow]Reached turn limit.[/bold yellow]")
 
     return CodeResponse(
-        content_string=concatenated_responses, file_data_list=[], usage=Usage(0, 0)
+        content_string=concatenated_responses, file_data_list=[], usage=Usage(0, 0, 0, 0)
     )
+
+
+def get_plaintext_response(
+    client: anthropic.Client,
+    model: str,
+    messages: list[dict[str, str]],
+    system_prompt: str,
+) -> Optional[tuple[str, Usage]]:
+    """
+    Gets a single response from the AI, and treats it as plain text.
+
+
+    Args:
+        client (anthropic.Client): The Anthropic client instance.
+        model (str): The name of the AI model to use.
+        messages (list[dict[str, str]]): The list of messages to send to the AI.
+        system_prompt (str): The system prompt to provide to the AI.
+
+    Preconditions:
+        - client is a valid Anthropic client instance.
+        - Each message must have a 'role' and 'content' key.
+        - Elements in messages alternate betwen user prompts and assistant responses.
+        - Message list is not empty.
+        - First message is user prompt. (Last message may be either user prompt or (partial) assistant response.)
+
+    Side effects:
+    - Sends a single request to the Anthropic API.
+
+
+    Exceptions:
+        - requests.ConnectionError: Raised when there is a connection error with the API.
+        - requests.Timeout: Raised when the API request times out.
+
+    Returns:
+        - Optional[tuple[str, Usage]]: A tuple containing the AI's response as a string and the usage tally, or None if an error occurred.
+
+    """
+
+    assert isinstance(client, anthropic.Client), "Client must be an Anthropic Client"
+    assert isinstance(model, str), "model must be a string"
+    assert isinstance(messages, list), "messages must be a list"
+    assert len(messages) > 0, "messages must be a non-empty list"
+    assert all(
+        isinstance(msg, dict) and "role" in msg and "content" in msg for msg in messages
+    ), "messages must be a list of dicts with 'role' and 'content' keys"
+    assert isinstance(system_prompt, str), "System prompt must be a string"
+
+    try:
+        response = client.messages.create(
+            model=model,
+            max_tokens=4000,
+            temperature=0.0,
+            messages=messages,  # type: ignore
+            system=system_prompt,
+            extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"}
+        )
+    except requests.ConnectionError:
+        print("[red bold]Connection error, try again...[/red bold]")
+        return None
+    except requests.Timeout:
+        print("[red bold]Connection timed out, try again...[/red bold]")
+        return None
+
+    content = response.content
+    usage_tally = Usage(response.usage.input_tokens, response.usage.cache_creation_input_tokens, response.usage.cache_read_input_tokens, response.usage.output_tokens)
+    content_string: str = ""
+
+    if len(content) == 0:
+        print("Received an empty list of contents blocks.")
+    else:
+        content_block = content[0]
+        content_string: str = content_block.text  # type: ignore
+
+        if content_string == "":
+            console.print("Received an empty response string from AI.")
+            return None
+
+        return (content_string, usage_tally)
+
+    return None

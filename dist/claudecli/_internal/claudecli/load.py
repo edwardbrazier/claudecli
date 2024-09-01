@@ -7,15 +7,16 @@ This module provides functions to:
 3. Get the timestamp of the last saved session.
 4. Load and concatenate the contents of files in a directory and its subdirectories,
    with headers indicating each file's path relative to the base path.
+5. Load the contents of a single file, with a header indicating its path.
 
 Functions:
     load_config(logger, config_file)
     load_history_data(history_file)
     get_last_save_file()
     load_codebase(logger, base_path, extensions)
+    load_file_xml(file_path)
 """
 
-import logging
 import os
 import yaml
 
@@ -24,36 +25,10 @@ from typing import List
 
 from claudecli import constants
 from claudecli.printing import console
-from claudecli.pure import get_size
+from claudecli.codebase_watcher import Codebase, CodebaseState
 
 
-class Codebase:
-    def __init__(self, concatenated_contents: str, file_paths: list[str]):
-        self.concatenated_contents = concatenated_contents
-        self.file_paths = file_paths
-
-    def __add__(self, other: "Codebase") -> "Codebase":
-        """
-        Overload the `+` operator to concatenate two `Codebase` objects.
-        Args:
-            other (Codebase): The other `Codebase` object to concatenate with.
-
-        Preconditions:
-            - `other` is a valid `Codebase` object.
-
-        Side effects:
-            None.
-        """
-        concatenated_contents = self.concatenated_contents + other.concatenated_contents
-        file_paths = self.file_paths + other.file_paths
-        return Codebase(concatenated_contents, file_paths)
-
-    def __str__(self) -> str:
-        # Include both the string and the file names.
-        return f"{self.concatenated_contents}\n\n---\n\n{self.file_paths}"
-
-
-def load_config(logger: logging.Logger, config_file: str) -> dict:  # type: ignore
+def load_config(config_file: str) -> dict:  # type: ignore
     """
     Read a YAML config file and return its content as a dictionary.
 
@@ -80,7 +55,7 @@ def load_config(logger: logging.Logger, config_file: str) -> dict:  # type: igno
         os.makedirs(os.path.dirname(config_file), exist_ok=True)
         with open(config_file, "w", encoding="utf-8") as file:
             yaml.dump(constants.DEFAULT_CONFIG, file, default_flow_style=False)  # type: ignore
-        logger.info(f"New config file initialized: [green bold]{config_file}")
+        # logger.info(f"New config file initialized: [green bold]{config_file}")
 
     # Load existing config
     with open(config_file, encoding="utf-8") as file:
@@ -94,86 +69,211 @@ def load_config(logger: logging.Logger, config_file: str) -> dict:  # type: igno
     return config
 
 
-def load_codebase(base_path: str, extensions: List[str]) -> Codebase:
+def load_codebase_state(base_path: str, extensions: List[str]) -> CodebaseState:
     """
-    Concatenate the contents of files in the given directory and its subdirectories
+    Load the codebase state from the given directory and its subdirectories
     that match the specified file extensions.
+    If base_path is a file instead of a directory, load the state for just that single file.
 
     Args:
-        logger (logging.Logger): Logger instance for logging messages.
-        base_path (str): The starting directory path to search for files.
+        base_path (str): The starting directory path or file path to load. 
         extensions (List[str]): A list of file extension strings to include (e.g., ['py', 'txt']).
 
     Preconditions:
-        - The base_path is a valid directory path.
+        - The base_path is a valid directory path or file path.
         - The extensions list contains valid file extension strings.
 
     Side effects:
         None
 
     Exceptions:
-        ValueError: If base_path does not exist or is not a directory.
-        FileNotFoundError: If no matching files are found.
+        ValueError: If base_path does not exist or is not a directory or file.
 
     Returns:
-        Codebase: A Codebase object containing the concatenated file contents and a list of loaded file paths.
-        guarantees: The returned Codebase object will contain the concatenated file contents and a list of file paths.
-                    These may be empty.
+        CodebaseState: The CodebaseState object representing the state of the codebase.
+                       A single file specified by the user can be a codebase with a single element in it.
+        guarantees: The returned CodebaseState object will contain the file paths and their last modified timestamps.
     """
 
-    # Verify the base path exists and is a directory
-    if not os.path.exists(base_path) or not os.path.isdir(base_path):
-        raise ValueError(f"The path {base_path} does not exist or is not a directory.")
+    # Verify the base path exists
+    if not os.path.exists(base_path):
+        raise ValueError(f"The path {base_path} does not exist.")
 
-    concatenated_contents = ""
-    matched_files_found = False
+    codebase_state = CodebaseState()
+
+    # If base_path is a file, load the codebase from that file
+    file_path = base_path
+
+    if os.path.isfile(file_path):
+        try:
+            codebase_state.add_file(
+                os.path.relpath(file_path, os.path.dirname(file_path)),
+                os.path.getmtime(file_path),
+            )
+        except OSError as e:
+            console.print(f"Error accessing file {file_path}: {e}")
+
+    # If base_path is a directory, load the codebase from there
+    if os.path.isdir(base_path):
+        # Walk through the directory and subdirectories recursively
+        for root, _, files in os.walk(base_path):
+            if "__pycache__" not in root:
+                for file_name in files:
+                    if (
+                        any(file_name.endswith(f".{ext}") for ext in extensions)
+                        or not extensions
+                    ):
+                        file_path_absolute = os.path.join(root, file_name)
+                        file_path_relative = os.path.relpath(file_path_absolute, base_path)
+
+                        try:
+                            codebase_state.add_file(
+                                file_path_relative,
+                                os.path.getmtime(file_path_absolute),
+                            )
+                        except OSError as e:
+                            console.print(f"Error accessing file {file_path_absolute}: {e}")
+
+    return codebase_state
+
+def load_file_xml(file_path: str) -> str:
+    """
+    Load the contents of a single file and return it as an XML string.
+
+    Args:
+        file_path (str): The path to the file to load.
+
+    Preconditions:
+        - file_path is a valid file path.
+
+    Side effects:
+        None
+
+    Exceptions:
+        None
+
+    Returns:
+        str: The XML representation of the file contents.
+        guarantees: The returned string will be a valid XML representation of the file.
+    """
+
+    assert os.path.isfile(file_path), f"{file_path} is not a valid file path"
+
+    encodings = ["utf-8", "cp1252", "iso-8859-1"]
+    file_loaded = False
+    file_xml = ""
+
+    for encoding in encodings:
+        try:
+            with open(file_path, "r", encoding=encoding) as file:
+                contents = file.read()
+                file_xml = f"<single_file>\n<file>\n<path>{file_path}</path>\n<content>{contents}</content>\n</file>\n</single_file>"
+                file_loaded = True
+                break
+        except (OSError, IOError) as e:
+            console.print(
+                f"Error reading file {file_path} with encoding {encoding}: {e}"
+            )
+        except UnicodeDecodeError:
+            console.print(
+                f"Failed to decode file {file_path} with encoding {encoding}"
+            )
+        except Exception as e:
+            console.print(f"An unexpected error occurred: {e}")
+
+    if not file_loaded:
+        console.print(f"Failed to load file {file_path} with any encoding.")
+        return ""
+
+    return file_xml
+
+
+def load_codebase_xml(codebase_locations: List[str], extensions: List[str]) -> str:
+    """
+    Load the codebase XML representation from the given directories and their subdirectories
+    that match the specified file extensions.
+
+    Args:
+        codebase_locations (List[str]): A list of directory paths to search for files.
+        extensions (List[str]): A list of file extension strings to include (e.g., ['py', 'txt']).
+
+    Preconditions:
+        - The codebase_locations list contains valid directory paths.
+        - The extensions list contains valid file extension strings.
+
+    Side effects:
+        None
+
+    Exceptions:
+        None
+
+    Returns:
+        str: The XML representation of the codebase.
+        guarantees: The returned string will be a valid XML representation of the codebase.
+    """
+
+    codebase_xml = "<codebase>\n"
 
     encodings = ["utf-8", "cp1252", "iso-8859-1"]
 
-    concatenated_contents += "<codebase_subfolder>\n"
+    for base_path in codebase_locations:
+        codebase_xml += "<codebase_subfolder>\n"
 
-    codebase_files: list[str] = []
+        # Walk through the directory and subdirectories recursively
+        for root, _, files in os.walk(base_path):
+            if "__pycache__" not in root:
+                for file_name in files:
+                    if (
+                        any(file_name.endswith(f".{ext}") for ext in extensions)
+                        or not extensions
+                    ):
+                        file_path_absolute = os.path.join(root, file_name)
+                        file_path_relative = os.path.relpath(
+                            file_path_absolute, base_path
+                        )
 
-    # Walk through the directory and subdirectories
-    for root, _, files in os.walk(base_path):
-        if "__pycache__" not in root:
-            for file_name in files:
-                if any(file_name.endswith(f".{ext}") for ext in extensions) or not (
-                    any(extensions)
-                ):
-                    matched_files_found = True
-                    file_path = Path(root) / file_name
-
-                    for encoding in encodings:
-                        try:
-                            with open(file_path, "r", encoding=encoding) as file:
-                                contents = file.read()
-                                concatenated_contents += (
-                                    f"<file>\n"
-                                    f"<path>{str(file_path)}</path>\n"
-                                    f"<content>{contents}</content>\n"
-                                    f"</file>\n"
+                        file_loaded = False
+                        for encoding in encodings:
+                            try:
+                                with open(
+                                    file_path_absolute, "r", encoding=encoding
+                                ) as file:
+                                    contents = file.read()
+                                    codebase_xml += (
+                                        f"<file>\n"
+                                        f"<path>{file_path_relative}</path>\n"
+                                        f"<content>{contents}</content>\n"
+                                        f"</file>\n"
+                                    )
+                                    file_loaded = True
+                                    break
+                            except (OSError, IOError) as e:
+                                console.print(
+                                    f"Error reading file {file_path_absolute} with encoding {encoding}: {e}"
                                 )
-                                codebase_files.append(str(file_path))
+                            except UnicodeDecodeError:
+                                console.print(
+                                    f"Failed to decode file {file_path_absolute} with encoding {encoding}"
+                                )
+                            except Exception as e:
+                                console.print(f"An unexpected error occurred: {e}")
 
-                                break
-                        except Exception as e:
+                        if not file_loaded:
                             console.print(
-                                f"Failed to open file {file_path} with encoding {encoding}: {e}"
+                                f"Failed to load file {file_path_absolute} with any encoding."
                             )
 
-    concatenated_contents += "</codebase_subfolder>\n"
+        codebase_xml += "</codebase_subfolder>\n"
 
-    if not matched_files_found:
-        raise FileNotFoundError("No matching files found.")
+    codebase_xml += "</codebase>\n"
 
-    console.print(
-        f"\tLoaded [green bold]{len(codebase_files)} files[/green bold] from codebase."
-    )
-    console.print(
-        f"\tCodebase size: [green bold]{get_size(concatenated_contents)}[/green bold]"
-    )
+    return codebase_xml
 
-    return Codebase(
-        concatenated_contents=concatenated_contents, file_paths=codebase_files
-    )
+
+def load_codebase_xml_(codebases: list[Codebase], extensions: list[str]) -> str:
+    """
+    A wrapper over load_codebase_xml()
+    """
+
+    codebase_locations: list[str] = [c.location for c in codebases]
+    return load_codebase_xml(codebase_locations, extensions)

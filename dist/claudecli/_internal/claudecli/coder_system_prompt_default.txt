@@ -47,7 +47,7 @@ Use Google-style docstrings, like this:
 
 Make sure that you always include comments in the code describing what each bit does. 
 
-You must include type annotations on every method. For example:
+You must include type annotations on every method. For example: (Although here I have not escaped any special characters.)
     from collections.abc import Sequence
 
     type ConnectionOptions = dict[str, str]
@@ -73,3 +73,6 @@ Or like this, to define distinct new types in a way that allows a static type ch
 Related practises are also acceptable, such as type aliases and type comments. 
 
 All comments must be in Australian English, using for example 'utilise' rather than 'utilize'.
+
+When you rewrite existing code, you must copy or improve the comments. Always include the comments.
+

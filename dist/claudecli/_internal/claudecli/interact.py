@@ -14,11 +14,25 @@ from typing import Optional, Union
 from rich.logging import RichHandler
 
 from claudecli.printing import print_markdown, console
-from claudecli.constants import coder_system_prompt_hardcoded
+from claudecli.constants import (
+    coder_system_prompt_hardcoded,
+    coder_system_prompt_plaintext,
+)
 from claudecli import save
-from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
+from claudecli.ai_functions import (
+    gather_ai_code_responses,
+    prompt_ai,
+    get_plaintext_response,
+)
 from claudecli.parseaicode import CodeResponse
 from claudecli.pure import format_cost
+from claudecli.codebase_watcher import (
+    Codebase,
+    CodebaseUpdates,
+    CodebaseState,
+    find_codebase_change_contents,
+    num_affected_files,
+)
 
 logger = logging.getLogger("rich")
 
@@ -38,12 +52,12 @@ class UserPromptOutcome(Enum):
     STOP = 0
 
 
-PromptOutcome = Union[ConversationHistory, UserPromptOutcome]
+PromptOutcome = Union[ConversationHistory, UserPromptOutcome, CodebaseUpdates]
 
 
 def prompt_user(
     client: anthropic.Client,
-    codebase_xml: Optional[str],
+    context: Optional[str],
     conversation_history: ConversationHistory,
     session: PromptSession[str],
     config: dict,  # type: ignore
@@ -51,21 +65,25 @@ def prompt_user(
     force_overwrite: bool,
     user_system_prompt_code: str,
     system_prompt_general: str,
+    codebases: list[Codebase],
+    file_extensions: list[str],
 ) -> PromptOutcome:
     """
     Ask the user for input, build the request and perform it.
 
     Args:
         client (anthropic.Client): The Anthropic client instance.
-        codebase_xml (Optional[str]): The XML representation of the codebase, if provided.
+        context (Optional[str]): The XML representation of the codebase or changes to the codebase, if provided.
         conversation_history (ConversationHistory): The history of the conversation so far.
         session (PromptSession): The prompt session object for interactive input.
         config (dict): The configuration dictionary containing settings for the API request.
-        output_dir (Optional[str]): The output directory for generated files when using the /o command.
+        output_dir_notnone (str): The output directory for generated files when using the /o command.
         force_overwrite (bool): Whether to force overwrite of output files if they already exist.
-        system_prompt_code (str): The user's part of the system prompt to use for code generation,
+        user_system_prompt_code (str): The user's part of the system prompt to use for code generation,
                                     additional to the hardcoded coder system prompt.
         system_prompt_general (str): The system prompt to use for general conversation.
+        codebases (list[Codebase]): A list of Codebases being watched.
+        file_extensions (list[str]): A list of file extensions to watch for in the codebases.
 
     Preconditions:
         - The `conversation_history` list is initialized and contains the conversation history.
@@ -89,11 +107,8 @@ def prompt_user(
     """
     user_entry: str = ""
 
-    if codebase_xml is not None:
-        context_data: str = (
-            "Here is a codebase. Read it carefully, because I want you to work on it.\n\n"
-            "\n\nCodebase:\n" + codebase_xml + "\n\n"
-        )
+    if context is not None:
+        context_data: str = context
     else:
         context_data: str = ""
 
@@ -116,6 +131,33 @@ def prompt_user(
         render_markdown = False
         user_instruction = (user_entry.strip())[2:].strip()
 
+    if user_entry.lower().strip() == "/u":
+        codebase_locations: list[str] = [codebase.location for codebase in codebases]
+        codebase_states: list[CodebaseState] = [
+            codebase.state for codebase in codebases
+        ]
+        codebase_updates: CodebaseUpdates = find_codebase_change_contents(
+            codebase_locations, file_extensions, codebase_states
+        )
+
+        if num_affected_files(codebase_updates) == 0:
+            console.print("No changes were identified in the codebase.")
+        else:
+            console.print(codebase_updates.change_descriptive.change_descriptions)
+            console.print(
+                "Details of the changes will be prepended to your next message to the AI."
+            )
+
+        return codebase_updates
+        
+    context_prompt_element = { # TODO: Later, for codebase updates, make a list of context strings where each existing element will never change. That way, the changes to the codebase can form a newly cached element of context.
+                    # So that you don't modify the context and necessitate expensive re-caching.
+                    "type": "text",
+                    "text": context_data,
+                    "cache_control": {"type": "ephemeral"}
+                }
+    
+
     # There are two cases:
     # One is that the user wants the AI to talk to them.
     # The other is that the user wants the AI to send code to some files.
@@ -125,36 +167,102 @@ def prompt_user(
         # Remove the "/o" from the message
         user_instruction = (user_entry.strip())[2:].strip()
 
+        user_prompt_element = {
+                        "type": "text",
+                        "text": f"<user_instructions>{user_instruction}</user_instructions>"
+                                + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!"
+                    }
+
         # The Anthropic documentation says that Claude performs better when
         # the input data comes first and the instructions come last.
-        new_messages: list[dict[str, str]] = [
+        new_messages_first_try = [ # type: ignore
             {
                 "role": "user",
                 # The following is still ok if context_data is empty,
                 # which should happen if it's not the first turn of
                 # the conversation.
-                "content": context_data
-                + user_instruction
-                + "\nMake sure to escape special characters correctly inside the XML!",
+                "content": [user_prompt_element] if context_data == "" else [context_prompt_element, user_prompt_element],
             },
             {"role": "assistant", "content": '<?xml version="1.0" encoding="UTF-8"?>'},
         ]
 
-        messages = conversation_history + new_messages
-        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
+        messages_first_try = conversation_history + new_messages_first_try
+        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages_first_try, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
 
-        if response_content is None:
-            console.print("[bold red]Failed to get a response from the AI.[/bold red]")
-            return UserPromptOutcome.CONTINUE
-        else:
+        if response_content is None or response_content.file_data_list == []:
+            console.print(
+                "[bold red]Failed to get a validly formatted response from the AI.[/bold red]"
+            )
+            console.print(
+                "Asking the AI for an alternative response without the XML formatting."
+            )
+
+            prefix = "--- file"
+
+            
+            user_prompt_element = {
+                            "type": "text",
+                            "text": f"<user_instructions>{user_instruction}</user_instructions>"
+                        }
+
+            new_messages_second_try: list[dict[str, str]] = [
+                {
+                    "role": "user",
+                    # The following is still ok if context_data is empty,
+                    # which should happen if it's not the first turn of
+                    # the conversation.
+                    "content": [user_prompt_element] if context_data == "" else [context_prompt_element, user_prompt_element],
+                },
+                {"role": "assistant", "content": prefix},
+            ]
+
+            messages_second_try = conversation_history + new_messages_second_try
+
+            (plaintext_response_content, usage) = get_plaintext_response(
+                client, model, messages_second_try, coder_system_prompt_plaintext + user_system_prompt_code
+            )  # type: ignore
+
+            if (
+                plaintext_response_content is None
+                or plaintext_response_content.strip() == ""
+            ):
+                console.print(
+                    "[bold red]Failed to get a valid response from the AI, even in plaintext format.[/bold red]"
+                )
+                return UserPromptOutcome.CONTINUE
+
+            content = prefix + plaintext_response_content
+            success = save.save_plaintext_output(content, output_dir_notnone, force_overwrite)  # type: ignore
+            
+            if success:
+                console.print(
+                    "[bold yellow]Finished saving plain AI output without XML formatting.[/bold yellow]"
+                )
+                console.print(
+                    "Please note that this output may contain code intended for multiple source files."
+                )
+            else:
+                console.print("[bold yellow]Something went wrong. Did not write the file.")
+
+            # Remove dummy assistant message from end of conversation history
+            conversation_ = messages_second_try[:-1]
+            # Add assistant message onto the conversation history
+            conversation_contents = conversation_ + [
+                {"role": "assistant", "content": plaintext_response_content}
+            ]
+
+            console.print(format_cost(usage, model))  # type: ignore
+
+            return conversation_contents
+        else:  # success
             try:
-                save.save_ai_output(response_content, output_dir_notnone, force_overwrite)  # type: ignore
-                console.print("[bold green]Finished saving AI output.[/bold green]")
+                num_written = save.save_ai_output(response_content, output_dir_notnone, force_overwrite)  # type: ignore
+                console.print(f"[bold green]Wrote AI output to {num_written} files.[/bold green]")
             except Exception as e:
                 console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
 
             # Remove dummy assistant message from end of conversation history
-            conversation_ = messages[:-1]
+            conversation_ = messages_first_try[:-1]
             # Add assistant message onto the conversation history
             conversation_contents = conversation_ + [
                 {"role": "assistant", "content": response_content.content_string}
@@ -167,11 +275,19 @@ def prompt_user(
         # User is conversing with AI, not asking for code sent to files.
         user_prompt: str = user_instruction
 
-        new_messages: list[dict[str, str]] = [
-            {"role": "user", "content": context_data + user_prompt}
+        user_prompt_element =             {
+                "type": "text",
+                "text": f"<user_prompt>{user_prompt}</user_prompt>"
+            }
+
+        new_messages_first_try = [
+            {
+                "role": "user",
+                "content": [user_prompt_element] if context_data == "" else [context_prompt_element, user_prompt_element]
+            }
         ]
 
-        messages = conversation_history + new_messages
+        messages = conversation_history + new_messages_first_try
 
         chat_response_optional = prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
 
@@ -186,6 +302,8 @@ def prompt_user(
 
             response_string = chat_response_optional.content_string
             usage = chat_response_optional.usage
-            console.print()
             console.print(format_cost(usage, model))  # type: ignore
-            return messages + [{"role": "assistant", "content": response_string}]
+            chat_history = messages + [
+                {"role": "assistant", "content": response_string}
+            ]
+            return chat_history
