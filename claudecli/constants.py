@@ -17,7 +17,7 @@ BASE = Path(xdg_config_home(), "claudecli")
 CONFIG_FILE = BASE / "config.yaml"
 ENV_VAR_ANTHROPIC = "ANTHROPIC_API_KEY"
 
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 DEFAULT_CONFIG = {
     "supplier": "anthropic",

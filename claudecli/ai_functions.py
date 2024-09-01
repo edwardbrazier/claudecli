@@ -82,6 +82,7 @@ def prompt_ai(
             temperature=0,
             messages=messages,  # type: ignore
             system=system_prompt,
+            extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"}
         )
     except requests.ConnectionError:
         console.print("[red bold]Connection error, try again...[/red bold]")
@@ -171,6 +172,7 @@ def gather_ai_code_responses(
                 temperature=0.0,
                 messages=messages,  # type: ignore
                 system=system_prompt,
+                extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"}
             )
         except requests.ConnectionError:
             print("[red bold]Connection error, try again...[/red bold]")
@@ -304,6 +306,7 @@ def get_plaintext_response(
             temperature=0.0,
             messages=messages,  # type: ignore
             system=system_prompt,
+            extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"}
         )
     except requests.ConnectionError:
         print("[red bold]Connection error, try again...[/red bold]")

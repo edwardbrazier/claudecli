@@ -161,15 +161,26 @@ def prompt_user(
 
         # The Anthropic documentation says that Claude performs better when
         # the input data comes first and the instructions come last.
-        new_messages_first_try: list[dict[str, str]] = [
+        new_messages_first_try = [ # type: ignore
             {
                 "role": "user",
                 # The following is still ok if context_data is empty,
                 # which should happen if it's not the first turn of
                 # the conversation.
-                "content": context_data
-                + f"<user_instructions>{user_instruction}</user_instructions>"
-                + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!",
+                "content": [
+                    { # TODO: Later, for codebase updates, make a list of context strings where each existing element will never change. That way, the changes to the codebase can form a newly cached element of context.
+                        # So that you don't modify the context and necessitate expensive re-caching.
+                        "type": "text",
+                        "text": context_data,
+                        "cache_control": {"type": "ephemeral"}
+                    },
+                    {
+                        "type": "text",
+                        "text": context_data
+                                    + f"<user_instructions>{user_instruction}</user_instructions>"
+                                    + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!"
+                    }
+                ]
             },
             {"role": "assistant", "content": '<?xml version="1.0" encoding="UTF-8"?>'},
         ]
