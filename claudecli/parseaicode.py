@@ -26,23 +26,52 @@ class ParseResult(NamedTuple):
 class Usage(NamedTuple):
     """
     Represents the number of tokens used by the model for the input and output.
+    Accounts for caching.
     """
 
-    input_tokens: int
+    input_tokens_regular: int
+    cache_creation_input_tokens: int
+    cache_read_input_tokens: int
     output_tokens: int
 
     def __repr__(self):
-        return f"Input - {self.input_tokens}; Output - {self.output_tokens}"
+        return f"Input regular tokens - {self.input_tokens_regular}; " + \
+            f"Cache creation tokens - {self.cache_creation_input_tokens}; \n" + \
+            f"Cache read tokens - {self.cache_read_input_tokens}; " + \
+            f"Output - {self.output_tokens}"
 
 
-def sum_usages(u1: Usage, u2: Usage):
+def sum_usages(u1: Usage, u2: Usage) -> Usage:
     """
-    Overload the + operator to add two Usage tallies.
+    Sum two Usage tallies.
+
+    Args:
+        u1 (Usage): The first Usage object.
+        u2 (Usage): The second Usage object.
+
+    Preconditions:
+        - u1 and u2 are valid Usage objects.
+
+    Side effects:
+        None.
+
+    Exceptions:
+        None.
+
+    Returns:
+        Usage: A new Usage object with summed values.
+        guarantees: The returned value is a Usage object.
     """
     assert isinstance(u1, Usage) and isinstance(
         u2, Usage
     ), "Both arguments must be Usage objects"
-    return Usage(u1.input_tokens + u2.input_tokens, u1.output_tokens + u2.output_tokens)
+    
+    return Usage(
+        input_tokens_regular=u1.input_tokens_regular + u2.input_tokens_regular,
+        cache_creation_input_tokens=u1.cache_creation_input_tokens + u2.cache_creation_input_tokens,
+        cache_read_input_tokens=u1.cache_read_input_tokens + u2.cache_read_input_tokens,
+        output_tokens=u1.output_tokens + u2.output_tokens
+    )
 
 
 class CodeResponse(NamedTuple):

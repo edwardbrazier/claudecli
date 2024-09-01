@@ -109,6 +109,8 @@ class FileUpdate(NamedTuple):
 
 class CodebaseTransformation:
     """
+    Represents a set of changes to a codebase.
+
     Invariant: There must not be any double-ups in the `additions` or `updates` sets.
     """
     def __init__(self):
@@ -145,6 +147,12 @@ IDENTITY_TRANSFORMATION = CodebaseTransformation()
 def changed_files(transformation: CodebaseTransformation) -> Set[FilePath]:
     """
     Gives a list of all files affected by the CodebaseTransformation, as paths relative to the codebase location.
+
+    Args:
+        transformation (CodebaseTransformation): The CodebaseTransformation to analyze.
+
+    Returns:
+        Set[FilePath]: A set of file paths affected by the transformation.
     """
     updates: Set[FilePath] = set(f.file_path for f in transformation.updates)
     additions: Set[FilePath] = set(f.file_path for f in transformation.additions)
@@ -175,6 +183,12 @@ class CodebaseUpdates(NamedTuple):
 def num_affected_files(updates: CodebaseUpdates) -> int:
     """
     Returns the number of files affected by the codebase updates.
+
+    Args:
+        updates (CodebaseUpdates): The CodebaseUpdates object to analyze.
+
+    Returns:
+        int: The total number of affected files across all transformations.
     """
     num_affected = sum(
         [
@@ -385,7 +399,8 @@ def format_transformation(transformation: CodebaseTransformation) -> str:
     Generate a human-readable description of the changes in a CodebaseTransformation object.
 
     Args:
-        transformation (CodebaseTransformation): The CodebaseTransformation object representing the changes.
+        transformation (CodebaseTransformation):
+            The CodebaseTransformation object representing the changes.
 
     Preconditions:
         - transformation is a valid CodebaseTransformation object.
@@ -451,6 +466,7 @@ def apply_transformation(
 
     Returns:
         CodebaseState: The updated codebase state after applying the transformation.
+        guarantees: The returned CodebaseState object will contain the file paths and their last modified timestamps.
     """
     assert isinstance(
         codebase_state, CodebaseState

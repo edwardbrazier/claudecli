@@ -111,7 +111,7 @@ def prompt_ai(
         else:
             return ChatResponse(
                 content_string=content_string,
-                usage=Usage(response.usage.input_tokens, response.usage.output_tokens),
+                usage=Usage(response.usage.input_tokens, response.usage.cache_creation_input_tokens, response.usage.cache_read_input_tokens, response.usage.output_tokens),
             )
 
 
@@ -159,7 +159,7 @@ def gather_ai_code_responses(
 
     responses: list[str] = []
     concatenated_responses: str = ""
-    usage_tally = Usage(0, 0)
+    usage_tally = Usage(0, 0, 0, 0)
     finished = False
     max_turns = 10
     separator = "\n-------------------------------\n"
@@ -184,7 +184,7 @@ def gather_ai_code_responses(
         content = response.content
         usage_tally = sum_usages(
             usage_tally,
-            Usage(response.usage.input_tokens, response.usage.output_tokens),
+            Usage(response.usage.input_tokens, response.usage.cache_creation_input_tokens, response.usage.cache_read_input_tokens, response.usage.output_tokens),
         )
 
         content_string: str = ""
@@ -250,7 +250,7 @@ def gather_ai_code_responses(
     print("[bold yellow]Reached turn limit.[/bold yellow]")
 
     return CodeResponse(
-        content_string=concatenated_responses, file_data_list=[], usage=Usage(0, 0)
+        content_string=concatenated_responses, file_data_list=[], usage=Usage(0, 0, 0, 0)
     )
 
 
@@ -316,7 +316,7 @@ def get_plaintext_response(
         return None
 
     content = response.content
-    usage_tally = Usage(response.usage.input_tokens, response.usage.output_tokens)
+    usage_tally = Usage(response.usage.input_tokens, response.usage.cache_creation_input_tokens, response.usage.cache_read_input_tokens, response.usage.output_tokens)
     content_string: str = ""
 
     if len(content) == 0:

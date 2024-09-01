@@ -63,7 +63,7 @@ def calculate_cost(usage: Usage, model_name: str) -> float:
 
     input_cost_per_million, output_cost_per_million = pricing[model_name]
 
-    input_cost = usage.input_tokens * input_cost_per_million / 1_000_000
+    input_cost = usage.input_tokens_regular * input_cost_per_million / 1_000_000
     output_cost = usage.output_tokens * output_cost_per_million / 1_000_000
 
     total_cost = input_cost + output_cost
@@ -100,4 +100,4 @@ def format_cost(usage: Usage, model_name: str) -> str:
     ], "model_name must be one of 'haiku', 'sonnet', or 'opus'"
 
     cost = calculate_cost(usage, model_name)
-    return f"[bold green]Tokens used in this message:[/bold green] Input - {usage.input_tokens}; Output - {usage.output_tokens} [bold green]Cost:[/bold green] ${cost:.4f} USD"
+    return f"[bold green]Tokens used in this message:[/bold green] Input - {usage.input_tokens_regular}; Output - {usage.output_tokens} [bold green]Cost:[/bold green] ${cost:.4f} USD"

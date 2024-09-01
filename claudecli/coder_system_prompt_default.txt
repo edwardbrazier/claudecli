@@ -47,7 +47,7 @@ Use Google-style docstrings, like this:
 
 Make sure that you always include comments in the code describing what each bit does. 
 
-You must include type annotations on every method. For example:
+You must include type annotations on every method. For example: (Although here I have not escaped any special characters.)
     from collections.abc import Sequence
 
     type ConnectionOptions = dict[str, str]

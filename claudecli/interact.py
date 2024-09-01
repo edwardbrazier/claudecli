@@ -149,6 +149,14 @@ def prompt_user(
             )
 
         return codebase_updates
+        
+    context_prompt_element = { # TODO: Later, for codebase updates, make a list of context strings where each existing element will never change. That way, the changes to the codebase can form a newly cached element of context.
+                    # So that you don't modify the context and necessitate expensive re-caching.
+                    "type": "text",
+                    "text": context_data,
+                    "cache_control": {"type": "ephemeral"}
+                }
+    
 
     # There are two cases:
     # One is that the user wants the AI to talk to them.
@@ -159,6 +167,12 @@ def prompt_user(
         # Remove the "/o" from the message
         user_instruction = (user_entry.strip())[2:].strip()
 
+        user_prompt_element = {
+                        "type": "text",
+                        "text": f"<user_instructions>{user_instruction}</user_instructions>"
+                                + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!"
+                    }
+
         # The Anthropic documentation says that Claude performs better when
         # the input data comes first and the instructions come last.
         new_messages_first_try = [ # type: ignore
@@ -167,20 +181,7 @@ def prompt_user(
                 # The following is still ok if context_data is empty,
                 # which should happen if it's not the first turn of
                 # the conversation.
-                "content": [
-                    { # TODO: Later, for codebase updates, make a list of context strings where each existing element will never change. That way, the changes to the codebase can form a newly cached element of context.
-                        # So that you don't modify the context and necessitate expensive re-caching.
-                        "type": "text",
-                        "text": context_data,
-                        "cache_control": {"type": "ephemeral"}
-                    },
-                    {
-                        "type": "text",
-                        "text": context_data
-                                    + f"<user_instructions>{user_instruction}</user_instructions>"
-                                    + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!"
-                    }
-                ]
+                "content": [user_prompt_element] if context_data == "" else [context_prompt_element, user_prompt_element],
             },
             {"role": "assistant", "content": '<?xml version="1.0" encoding="UTF-8"?>'},
         ]
@@ -198,14 +199,19 @@ def prompt_user(
 
             prefix = "--- file"
 
+            
+            user_prompt_element = {
+                            "type": "text",
+                            "text": f"<user_instructions>{user_instruction}</user_instructions>"
+                        }
+
             new_messages_second_try: list[dict[str, str]] = [
                 {
                     "role": "user",
                     # The following is still ok if context_data is empty,
                     # which should happen if it's not the first turn of
                     # the conversation.
-                    "content": context_data
-                    + user_instruction,
+                    "content": [user_prompt_element] if context_data == "" else [context_prompt_element, user_prompt_element],
                 },
                 {"role": "assistant", "content": prefix},
             ]
@@ -213,7 +219,7 @@ def prompt_user(
             messages_second_try = conversation_history + new_messages_second_try
 
             (plaintext_response_content, usage) = get_plaintext_response(
-                client, model, messages_second_try, coder_system_prompt_plaintext
+                client, model, messages_second_try, coder_system_prompt_plaintext + user_system_prompt_code
             )  # type: ignore
 
             if (
@@ -269,8 +275,16 @@ def prompt_user(
         # User is conversing with AI, not asking for code sent to files.
         user_prompt: str = user_instruction
 
-        new_messages_first_try: list[dict[str, str]] = [
-            {"role": "user", "content": context_data + user_prompt}
+        user_prompt_element =             {
+                "type": "text",
+                "text": f"<user_prompt>{user_prompt}</user_prompt>"
+            }
+
+        new_messages_first_try = [
+            {
+                "role": "user",
+                "content": [user_prompt_element] if context_data == "" else [context_prompt_element, user_prompt_element]
+            }
         ]
 
         messages = conversation_history + new_messages_first_try

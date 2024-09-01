@@ -59,14 +59,17 @@ def calculate_cost(usage: Usage, model_name: str) -> float:
         opus,
     ], "model_name must be one of 'haiku', 'sonnet', or 'opus'"
 
-    pricing = {haiku: (0.25, 1.25), sonnet: (3.0, 15.0), opus: (15.0, 75.0)}
+    pricing = {haiku: (0.25, 0.30, 0.03,  1.25), sonnet: (3.0, 3.75, 0.30, 15.0), opus: (15.0, 18.75, 1.50, 75.0)}
 
-    input_cost_per_million, output_cost_per_million = pricing[model_name]
+    input_cost_per_million, cache_creation_cost_per_million, cache_read_cost_per_million, output_cost_per_million = \
+        pricing[model_name]
 
-    input_cost = usage.input_tokens * input_cost_per_million / 1_000_000
+    input_cost = usage.input_tokens_regular * input_cost_per_million / 1_000_000
+    cache_creation_cost = usage.cache_creation_input_tokens * cache_creation_cost_per_million / 1_000_000
+    cache_read_cost = usage.cache_read_input_tokens * cache_read_cost_per_million / 1_000_000
     output_cost = usage.output_tokens * output_cost_per_million / 1_000_000
 
-    total_cost = input_cost + output_cost
+    total_cost = input_cost + cache_creation_cost + cache_read_cost + output_cost
     return total_cost
 
 
@@ -100,4 +103,9 @@ def format_cost(usage: Usage, model_name: str) -> str:
     ], "model_name must be one of 'haiku', 'sonnet', or 'opus'"
 
     cost = calculate_cost(usage, model_name)
-    return f"[bold green]Tokens used in this message:[/bold green] Input - {usage.input_tokens}; Output - {usage.output_tokens} [bold green]Cost:[/bold green] ${cost:.4f} USD"
+    return (f"[bold green]Tokens used in this message:[/bold green] \n"
+            f"Regular Input - {usage.input_tokens_regular}; \n"
+            f"Cache Creation Input - {usage.cache_creation_input_tokens}; \n"
+            f"Cache Read Input - {usage.cache_read_input_tokens}; \n"
+            f"Output - {usage.output_tokens} \n"
+            f"[bold green]Cost:[/bold green] ${cost:.4f} USD")
