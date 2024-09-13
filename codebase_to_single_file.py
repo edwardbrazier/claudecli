@@ -32,7 +32,7 @@ def main():
 
     codebase_xml, codebase_state = convert_codebase_to_single_file(args.locations, args.extensions)
 
-    with open(args.output, "w") as f:
+    with open(args.output, "w", encoding='utf-8') as f:
         f.write(codebase_xml)
 
     print(f"Codebase XML written to: {args.output}")
